@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Reference screenshots of demo/prototype.html for the GUI comparison",
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}
