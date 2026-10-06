@@ -1,0 +1,1543 @@
+{
+ "sample": [
+  {
+   "sev": "bad",
+   "icon": "lock",
+   "line": [
+    [
+     "t",
+     "Threads waited "
+    ],
+    [
+     "n",
+     "38 s"
+    ],
+    [
+     "t",
+     " for "
+    ],
+    [
+     "b",
+     "OrderCache@3c4d"
+    ],
+    [
+     "t",
+     " in "
+    ],
+    [
+     "m",
+     "com.example.orders.OrderCache.put"
+    ]
+   ],
+   "small": "held by http-nio-8080-exec-4 · 1 thread waiting",
+   "link": "View threads"
+  },
+  {
+   "sev": "bad",
+   "icon": "memory",
+   "line": [
+    [
+     "m",
+     "com.example.orders.Order"
+    ],
+    [
+     "t",
+     " grew by "
+    ],
+    [
+     "n",
+     "+35,147"
+    ],
+    [
+     "t",
+     " instances in 119 s"
+    ]
+   ],
+   "small": "+1.6 MB across 120 class histograms while the heap after GC grows. A possible leak",
+   "link": "View memory"
+  },
+  {
+   "sev": "bad",
+   "icon": "error",
+   "line": [
+    [
+     "t",
+     "Heap after GC keeps growing"
+    ]
+   ],
+   "small": "+22.1 MB/min (+44 MB during the recording). Possible leak · 3 more",
+   "link": "View GC analysis"
+  },
+  {
+   "sev": "warn",
+   "icon": "timer",
+   "line": [
+    [
+     "m",
+     "com.example.orders.OrderRepository.save"
+    ],
+    [
+     "t",
+     " waited "
+    ],
+    [
+     "n",
+     "47.5 s"
+    ],
+    [
+     "t",
+     " for I/O"
+    ]
+   ],
+   "small": "in NioSocketImpl.read · 2 threads",
+   "link": "View threads"
+  },
+  {
+   "sev": "info",
+   "icon": "local_fire_department",
+   "line": [
+    [
+     "t",
+     "32 % of CPU time is in "
+    ],
+    [
+     "m",
+     "com.example.orders.PriceCalculator.calculate"
+    ],
+    [
+     "t",
+     " and the library code it calls"
+    ]
+   ],
+   "small": "BigDecimal.multiply 10.6 s · BigDecimal.setScale 4.90 s · self 2.40 s · calls 14,420",
+   "link": "View hot spots"
+  }
+ ],
+ "cases": [
+  {
+   "snapshot": {
+    "target": {
+     "name": "app.Main",
+     "pid": 1,
+     "jvm": "OpenJDK 21",
+     "include": "app"
+    },
+    "startedAt": "2026-10-04T10:00:00+09:00",
+    "durationSec": 120,
+    "cpu": {
+     "tree": {
+      "name": "All threads",
+      "self": 0,
+      "calls": 0,
+      "children": [
+       {
+        "name": "java.lang.Thread.run",
+        "self": 0,
+        "calls": 0,
+        "children": [
+         {
+          "name": "app.Server.handle",
+          "self": 100,
+          "calls": 0,
+          "children": [
+           {
+            "name": "app.Json.write",
+            "self": 500,
+            "calls": 0,
+            "children": [
+             {
+              "name": "com.fasterxml.jackson.Gen.writeString",
+              "self": 3000,
+              "calls": 0,
+              "children": []
+             }
+            ]
+           },
+           {
+            "name": "java.util.HashMap.get",
+            "self": 800,
+            "calls": 0,
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "name": "app.Batch.run",
+        "self": 2000,
+        "calls": 0,
+        "children": []
+       }
+      ]
+     },
+     "methods": [
+      {
+       "name": "app.Json.write",
+       "calls": 1234
+      },
+      {
+       "name": "app.Server.handle",
+       "calls": 99
+      }
+     ]
+    },
+    "memory": {
+     "heapMaxMB": 1000,
+     "classes": [
+      {
+       "name": "app.Session",
+       "count": 6000,
+       "bytes": 2880000
+      },
+      {
+       "name": "byte[]",
+       "count": 7000,
+       "bytes": 700000
+      }
+     ],
+     "history": {
+      "t": [
+       30,
+       60,
+       90,
+       120,
+       150,
+       180,
+       210,
+       240,
+       270,
+       300
+      ],
+      "classes": [
+       "app.Session",
+       "byte[]"
+      ],
+      "count": [
+       [
+        1500,
+        9000
+       ],
+       [
+        2000,
+        7000
+       ],
+       [
+        2500,
+        9000
+       ],
+       [
+        3000,
+        7000
+       ],
+       [
+        3500,
+        9000
+       ],
+       [
+        4000,
+        7000
+       ],
+       [
+        4500,
+        9000
+       ],
+       [
+        5000,
+        7000
+       ],
+       [
+        5500,
+        9000
+       ],
+       [
+        6000,
+        7000
+       ]
+      ],
+      "bytes": [
+       [
+        720000,
+        900000
+       ],
+       [
+        960000,
+        700000
+       ],
+       [
+        1200000,
+        900000
+       ],
+       [
+        1440000,
+        700000
+       ],
+       [
+        1680000,
+        900000
+       ],
+       [
+        1920000,
+        700000
+       ],
+       [
+        2160000,
+        900000
+       ],
+       [
+        2400000,
+        700000
+       ],
+       [
+        2640000,
+        900000
+       ],
+       [
+        2880000,
+        700000
+       ]
+      ]
+     },
+     "allocations": [
+      {
+       "site": "app.Json.write",
+       "cls": "byte[]",
+       "mb": 2400.5
+      },
+      {
+       "site": "app.Server.handle",
+       "cls": "java.util.HashMap$Node",
+       "mb": 1800
+      },
+      {
+       "site": "app.Json.write",
+       "cls": "char[]",
+       "mb": 700.2
+      }
+     ]
+    },
+    "telemetry": {
+     "t": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+     ],
+     "n": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "cpu": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+     ],
+     "heap": [
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500
+     ],
+     "threads": [
+      20,
+      20,
+      21,
+      21,
+      21,
+      22,
+      22,
+      22,
+      23,
+      23,
+      23,
+      24,
+      24,
+      24,
+      25,
+      25,
+      25,
+      26,
+      26,
+      26,
+      27,
+      27,
+      27,
+      28,
+      28,
+      28,
+      29,
+      29,
+      29,
+      30,
+      30,
+      30,
+      31,
+      31,
+      31,
+      32,
+      32,
+      32,
+      33,
+      33,
+      33,
+      34,
+      34,
+      34,
+      35,
+      35,
+      35,
+      36,
+      36,
+      36,
+      37,
+      37,
+      37,
+      38,
+      38,
+      38,
+      39,
+      39,
+      39,
+      40,
+      40,
+      40,
+      41,
+      41,
+      41,
+      42,
+      42,
+      42,
+      43,
+      43,
+      43,
+      44,
+      44,
+      44,
+      45,
+      45,
+      45,
+      46,
+      46,
+      46,
+      47,
+      47,
+      47,
+      48,
+      48,
+      48,
+      49,
+      49,
+      49,
+      50,
+      50,
+      50,
+      51,
+      51,
+      51,
+      52,
+      52,
+      52,
+      53,
+      53,
+      53,
+      54,
+      54,
+      54,
+      55,
+      55,
+      55,
+      56,
+      56,
+      56,
+      57,
+      57,
+      57,
+      58,
+      58,
+      58,
+      59,
+      59,
+      59,
+      60
+     ]
+    },
+    "threads": [
+     {
+      "name": "worker-1",
+      "segs": [
+       [
+        0,
+        120,
+        "run"
+       ]
+      ],
+      "stack": [
+       "app.Server.handle"
+      ],
+      "sec": {
+       "run": 60,
+       "wait": 0,
+       "block": 30,
+       "io": 30
+      }
+     },
+     {
+      "name": "worker-2",
+      "segs": [
+       [
+        0,
+        120,
+        "run"
+       ]
+      ],
+      "stack": [
+       "app.Server.handle"
+      ],
+      "sec": {
+       "run": 110,
+       "wait": 0,
+       "block": 10,
+       "io": 0
+      }
+     }
+    ],
+    "waits": [
+     {
+      "state": "block",
+      "site": "app.Cache.get",
+      "lock": "java.util.concurrent.locks.ReentrantLock$NonfairSync@1f",
+      "owner": "worker-2",
+      "top": "jdk.internal.misc.Unsafe.park",
+      "sec": 12.3,
+      "threads": [
+       "worker-1",
+       "worker-3"
+      ]
+     },
+     {
+      "state": "block",
+      "site": "app.Cache.get",
+      "lock": "java.util.concurrent.locks.ReentrantLock$NonfairSync@1f",
+      "owner": "worker-3",
+      "top": "jdk.internal.misc.Unsafe.park",
+      "sec": 4.1,
+      "threads": [
+       "worker-2"
+      ]
+     },
+     {
+      "state": "io",
+      "site": "app.Db.query",
+      "top": "sun.nio.ch.NioSocketImpl.read",
+      "sec": 20,
+      "threads": [
+       "worker-1"
+      ]
+     },
+     {
+      "state": "io",
+      "site": "java.lang.Thread.run",
+      "top": "sun.nio.ch.NioSocketImpl.accept",
+      "sec": 118,
+      "threads": [
+       "acceptor"
+      ]
+     }
+    ],
+    "gc": {
+     "collector": "G1",
+     "heapMaxMB": 1000,
+     "events": [
+      {
+       "t": 0,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 5,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 100,
+       "metaspaceMB": 50
+      },
+      {
+       "t": 10,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 6,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 130,
+       "metaspaceMB": 55
+      },
+      {
+       "t": 20,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 7,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 160,
+       "metaspaceMB": 60
+      },
+      {
+       "t": 30,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 8,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 190,
+       "metaspaceMB": 65
+      },
+      {
+       "t": 40,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 9,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 220,
+       "metaspaceMB": 70
+      },
+      {
+       "t": 50,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 10,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 250,
+       "metaspaceMB": 75
+      },
+      {
+       "t": 55,
+       "name": "Full",
+       "cause": "Allocation Failure",
+       "pauseMs": 240,
+       "beforeMB": 990,
+       "afterMB": 880,
+       "oldAfterMB": 860,
+       "metaspaceMB": 75
+      },
+      {
+       "t": 60,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 11,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 280,
+       "metaspaceMB": 80
+      },
+      {
+       "t": 70,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 12,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 310,
+       "metaspaceMB": 85
+      },
+      {
+       "t": 80,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 13,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 340,
+       "metaspaceMB": 90
+      },
+      {
+       "t": 90,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 14,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 370,
+       "metaspaceMB": 95
+      },
+      {
+       "t": 100,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 15,
+       "beforeMB": 950,
+       "afterMB": 850,
+       "oldAfterMB": 400,
+       "metaspaceMB": 100
+      }
+     ]
+    }
+   },
+   "findings": [
+    {
+     "sev": "bad",
+     "icon": "lock",
+     "line": [
+      [
+       "t",
+       "Threads waited "
+      ],
+      [
+       "n",
+       "16.4 s"
+      ],
+      [
+       "t",
+       " for "
+      ],
+      [
+       "b",
+       "ReentrantLock$NonfairSync@1f"
+      ],
+      [
+       "t",
+       " in "
+      ],
+      [
+       "m",
+       "app.Cache.get"
+      ]
+     ],
+     "small": "held by worker-2 · 3 threads waiting",
+     "link": "View threads"
+    },
+    {
+     "sev": "bad",
+     "icon": "error",
+     "line": [
+      [
+       "t",
+       "Heap stays 85 % full after GC"
+      ]
+     ],
+     "small": "At least 850 of 1,000 MB is in use after every GC in the second half. Raise -Xmx, or keep less data reachable · 4 more",
+     "link": "View GC analysis"
+    },
+    {
+     "sev": "warn",
+     "icon": "speed",
+     "line": [
+      [
+       "t",
+       "The process uses "
+      ],
+      [
+       "n",
+       "95 %"
+      ],
+      [
+       "t",
+       " of all CPUs"
+      ]
+     ],
+     "small": "Work waits for a CPU: reduce the hot spots, or add CPUs",
+     "link": "View hot spots"
+    },
+    {
+     "sev": "warn",
+     "icon": "timer",
+     "line": [
+      [
+       "m",
+       "app.Db.query"
+      ],
+      [
+       "t",
+       " waited "
+      ],
+      [
+       "n",
+       "20 s"
+      ],
+      [
+       "t",
+       " for I/O"
+      ]
+     ],
+     "small": "in NioSocketImpl.read · 1 thread",
+     "link": "View threads"
+    },
+    {
+     "sev": "warn",
+     "icon": "view_timeline",
+     "line": [
+      [
+       "t",
+       "The thread count grew from "
+      ],
+      [
+       "n",
+       "20"
+      ],
+      [
+       "t",
+       " to "
+      ],
+      [
+       "n",
+       "60"
+      ]
+     ],
+     "small": "Threads are started and do not end: check thread pools and executors",
+     "link": "View threads"
+    },
+    {
+     "sev": "warn",
+     "icon": "delete_sweep",
+     "line": [
+      [
+       "m",
+       "app.Json.write"
+      ],
+      [
+       "t",
+       " allocates "
+      ],
+      [
+       "n",
+       "63 %"
+      ],
+      [
+       "t",
+       " of the memory"
+      ]
+     ],
+     "small": "mostly byte[] · 3.0 GB in the recording. Fewer allocations mean fewer GCs",
+     "link": "View allocations"
+    },
+    {
+     "sev": "info",
+     "icon": "local_fire_department",
+     "line": [
+      [
+       "t",
+       "55 % of CPU time is in "
+      ],
+      [
+       "m",
+       "app.Json.write"
+      ],
+      [
+       "t",
+       " and the library code it calls"
+      ]
+     ],
+     "small": "Gen.writeString 3.00 s · self 500 ms · calls 1,234",
+     "link": "View hot spots"
+    },
+    {
+     "sev": "ok",
+     "icon": "memory",
+     "line": [
+      [
+       "t",
+       "No sign of a memory leak"
+      ]
+     ],
+     "small": "The heap after GC does not keep growing",
+     "link": "View memory"
+    }
+   ],
+   "problems": [
+    {
+     "sev": "bad",
+     "title": "Heap stays 85 % full after GC",
+     "detail": "At least 850 of 1,000 MB is in use after every GC in the second half. Raise -Xmx, or keep less data reachable"
+    },
+    {
+     "sev": "warn",
+     "title": "1 Full GC the application did not request",
+     "detail": "G1 stopped all threads to collect the whole heap (cause Allocation Failure). The heap is too small for the allocation rate, or humongous objects fragment it"
+    },
+    {
+     "sev": "warn",
+     "title": "Long pause: up to 240 ms",
+     "detail": "p95 240 ms · cause Allocation Failure"
+    },
+    {
+     "sev": "warn",
+     "title": "Objects reach the old generation quickly",
+     "detail": "7.3 of 9 MB/s allocated is promoted: short-lived objects survive young GCs. Raise the young generation size, or find what holds them"
+    },
+    {
+     "sev": "warn",
+     "title": "Metaspace keeps growing",
+     "detail": "+50 MB (50 → 100 MB): classes are loaded and not unloaded. Look for class loaders created again and again (proxies, scripts, redeploys)"
+    }
+   ]
+  },
+  {
+   "snapshot": {
+    "target": {
+     "name": "app.Main",
+     "pid": 1,
+     "jvm": "OpenJDK 21"
+    },
+    "startedAt": "2026-10-04T10:00:00+09:00",
+    "durationSec": 120,
+    "cpu": {
+     "tree": {
+      "name": "All threads",
+      "self": 0,
+      "calls": 0,
+      "children": [
+       {
+        "name": "java.lang.Thread.run",
+        "self": 0,
+        "calls": 0,
+        "children": [
+         {
+          "name": "app.Server.handle",
+          "self": 100,
+          "calls": 0,
+          "children": [
+           {
+            "name": "app.Json.write",
+            "self": 500,
+            "calls": 0,
+            "children": [
+             {
+              "name": "com.fasterxml.jackson.Gen.writeString",
+              "self": 3000,
+              "calls": 0,
+              "children": []
+             }
+            ]
+           },
+           {
+            "name": "java.util.HashMap.get",
+            "self": 800,
+            "calls": 0,
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "name": "app.Batch.run",
+        "self": 2000,
+        "calls": 0,
+        "children": []
+       }
+      ]
+     },
+     "methods": [
+      {
+       "name": "app.Json.write",
+       "calls": 1234
+      },
+      {
+       "name": "app.Server.handle",
+       "calls": 99
+      }
+     ]
+    },
+    "memory": {
+     "heapMaxMB": 1000,
+     "classes": [
+      {
+       "name": "app.Session",
+       "count": 6000,
+       "bytes": 2880000
+      },
+      {
+       "name": "byte[]",
+       "count": 7000,
+       "bytes": 700000
+      }
+     ]
+    },
+    "threads": [
+     {
+      "name": "worker-1",
+      "segs": [
+       [
+        0,
+        120,
+        "run"
+       ]
+      ],
+      "stack": [
+       "app.Server.handle"
+      ],
+      "sec": {
+       "run": 60,
+       "wait": 0,
+       "block": 30,
+       "io": 30
+      }
+     },
+     {
+      "name": "worker-2",
+      "segs": [
+       [
+        0,
+        120,
+        "run"
+       ]
+      ],
+      "stack": [
+       "app.Server.handle"
+      ],
+      "sec": {
+       "run": 110,
+       "wait": 0,
+       "block": 10,
+       "io": 0
+      }
+     }
+    ],
+    "gc": {
+     "collector": "G1",
+     "heapMaxMB": 1000,
+     "events": [
+      {
+       "t": 5,
+       "name": "Young",
+       "cause": "G1 Evacuation Pause",
+       "pauseMs": 3,
+       "beforeMB": 300,
+       "afterMB": 100,
+       "oldAfterMB": 50,
+       "metaspaceMB": 40
+      }
+     ]
+    }
+   },
+   "findings": [
+    {
+     "sev": "warn",
+     "icon": "lock",
+     "line": [
+      [
+       "b",
+       "worker-1"
+      ],
+      [
+       "t",
+       " was blocked for 30 s in total"
+      ]
+     ],
+     "small": "app.Server.handle",
+     "link": "View threads"
+    },
+    {
+     "sev": "info",
+     "icon": "local_fire_department",
+     "line": [
+      [
+       "t",
+       "47 % of CPU time is in "
+      ],
+      [
+       "m",
+       "com.fasterxml.jackson.Gen.writeString"
+      ],
+      [
+       "t",
+       ""
+      ]
+     ],
+     "small": "self 3.00 s",
+     "link": "View hot spots"
+    },
+    {
+     "sev": "ok",
+     "icon": "memory",
+     "line": [
+      [
+       "t",
+       "No sign of a memory leak"
+      ]
+     ],
+     "small": "The heap after GC does not keep growing",
+     "link": "View memory"
+    },
+    {
+     "sev": "ok",
+     "icon": "check_circle",
+     "line": [
+      [
+       "t",
+       "GC looks healthy"
+      ]
+     ],
+     "small": "throughput 100.0 % · max pause 3.0 ms",
+     "link": "View GC analysis"
+    }
+   ],
+   "problems": []
+  }
+ ]
+}

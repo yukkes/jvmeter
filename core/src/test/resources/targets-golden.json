@@ -1,0 +1,14 @@
+{
+ "notesUnprepared21": [
+   "Attaching pauses the JVM briefly to instrument the loaded classes.",
+   "Start the JVM with -XX:+EnableDynamicAgentLoading -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints for a silent attach with exact times."
+ ],
+ "notesPrepared21": [
+   "Attaching pauses the JVM briefly to instrument the loaded classes."
+ ],
+ "notesJdk17": [
+   "Attaching pauses the JVM briefly to instrument the loaded classes.",
+   "Start the JVM with -XX:+EnableDynamicAgentLoading -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints for a silent attach with exact times."
+ ],
+ "notesRunning": []
+}
