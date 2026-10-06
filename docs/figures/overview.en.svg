@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
+<title id="t">How jvmeter works</title>
+<desc id="d">The agent is attached without a restart to a running JVM, local, over SSH or in a Kubernetes pod. It counts calls exactly with a counter at each method entry and samples CPU time, GC and threads with JFR every 1 ms. The GUI connects through your ssh or kubectl and shows Where to look, CPU, GC analysis and Threads. The result is saved as a snapshot with about and summary first, for people, the GUI and LLMs.</desc>
+<style>
+  .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
+  .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
+  .lead { fill: #0b0b0b; font-size: 20px; font-weight: 700 } .h { fill: #0b0b0b; font-size: 15px; font-weight: 700 }
+  .label { fill: #0b0b0b; font-size: 13px; font-weight: 600 } .sub { fill: #52514e; font-size: 13px }
+  .what { fill: #6b6a65; font-size: 12px } .value { fill: #0b0b0b; font-size: 13px; font-weight: 700 }
+  .code { fill: #0b0b0b; font-size: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .dim { fill: #9a9890 } .termtext { fill: #e6edf3; font-size: 11.5px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .badge { fill: #2a78d6 } .num { fill: #ffffff; font-size: 12px; font-weight: 700 }
+  .arrow { stroke: #8a8983; stroke-width: 2; fill: none } .head { fill: #8a8983 } .tick { stroke: #2a78d6; stroke-width: 2 }
+  .sample { stroke: #eb6834; stroke-width: 1.5; stroke-dasharray: 4 3 } .stack { fill: #eb6834 }
+  .jvmeter { fill: #2a78d6 } .jprofiler { fill: #eb6834 } .other { fill: #b5b4ab } .axis { stroke: #c3c2b7 }
+  .bad { fill: #d4382c } .warn { fill: #e0a100 }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19 } .box { fill: #222220; stroke: #383835 } .inner { fill: #2a2a28; stroke: #383835 }
+    .hl { fill: #1d3350 } .chip { fill: #222220; stroke: #4a4945 } .term { fill: #0d1117 }
+    .lead, .h, .label, .code, .value { fill: #ffffff } .sub { fill: #c3c2b7 } .what { fill: #9a9890 } .dim { fill: #6b6a65 }
+    .badge, .jvmeter { fill: #3987e5 } .tick { stroke: #3987e5 } .jprofiler, .stack { fill: #d95926 } .sample { stroke: #d95926 }
+    .other { fill: #5c5b55 } .axis { stroke: #4a4945 }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bg" width="960" height="400" rx="8"/>
+<text class="lead" x="16" y="36">How jvmeter works</text>
+<text class="sub" x="16" y="60">Attach to a running JVM, collect exact call counts and CPU time at low cost, and keep them in a file people and LLMs can read.</text>
+<rect class="box" x="16" y="84" width="300" height="300" rx="8"/>
+<text class="h" x="32" y="112">The JVM you profile</text>
+<circle class="badge" cx="42" cy="134" r="10"/>
+<text class="num" x="42" y="138" text-anchor="middle">1</text>
+<text class="sub" x="60" y="139">No restart: attach while it runs</text>
+<rect class="inner" x="32" y="156" width="268" height="148" rx="6"/>
+<text class="label" x="48" y="180">jvmeter agent</text>
+<circle class="badge" cx="58" cy="206" r="10"/>
+<text class="num" x="58" y="210" text-anchor="middle">2</text>
+<text class="label" x="76" y="211">Call counts</text>
+<text class="what" x="76" y="229">a counter at each method entry:</text>
+<text class="what" x="76" y="245">every call, exactly</text>
+<text class="label" x="76" y="271">CPU time, GC, threads</text>
+<text class="what" x="76" y="289">JFR, sampled every 1 ms</text>
+<circle class="badge" cx="42" cy="330" r="10"/>
+<text class="num" x="42" y="334" text-anchor="middle">3</text>
+<text class="sub" x="60" y="335">The same steps wherever it runs</text>
+<rect class="chip" x="32" y="346" width="68" height="26" rx="13"/>
+<text class="what" x="66.0" y="363" text-anchor="middle">Local</text>
+<rect class="chip" x="108" y="346" width="68" height="26" rx="13"/>
+<text class="what" x="142.0" y="363" text-anchor="middle">SSH</text>
+<rect class="chip" x="184" y="346" width="116" height="26" rx="13"/>
+<text class="what" x="242.0" y="363" text-anchor="middle">Kubernetes Pod</text>
+<text class="what" x="356" y="210" text-anchor="middle">your ssh /</text>
+<text class="what" x="356" y="226" text-anchor="middle">kubectl</text>
+<line class="arrow" x1="320" y1="240" x2="390" y2="240" marker-end="url(#a)"/>
+<text class="what" x="356" y="262" text-anchor="middle">127.0.0.1</text>
+<text class="what" x="356" y="278" text-anchor="middle">only,</text>
+<text class="what" x="356" y="294" text-anchor="middle">token auth</text>
+<rect class="box" x="396" y="84" width="240" height="300" rx="8"/>
+<text class="h" x="412" y="112">jvmeter GUI</text>
+<text class="what" x="412" y="132">One 2 MB jar, Java 17+</text>
+<rect class="inner" x="412" y="148" width="208" height="50" rx="6"/>
+<circle class="badge" cx="432" cy="173" r="10"/>
+<text class="num" x="432" y="177" text-anchor="middle">4</text>
+<text class="label" x="450" y="168">Where to look</text>
+<text class="what" x="450" y="186">bottlenecks, worst first</text>
+<rect class="inner" x="412" y="206" width="208" height="50" rx="6"/>
+<text class="label" x="450" y="226">CPU</text>
+<text class="what" x="450" y="244">hot spots, call tree</text>
+<rect class="inner" x="412" y="264" width="208" height="50" rx="6"/>
+<circle class="badge" cx="432" cy="289" r="10"/>
+<text class="num" x="432" y="293" text-anchor="middle">5</text>
+<text class="label" x="450" y="284">GC analysis</text>
+<text class="what" x="450" y="302">no GC log needed (from JFR)</text>
+<rect class="inner" x="412" y="322" width="208" height="50" rx="6"/>
+<text class="label" x="450" y="342">Threads</text>
+<text class="what" x="450" y="360">lock waits apart from I/O</text>
+<text class="what" x="676" y="226" text-anchor="middle">save</text>
+<line class="arrow" x1="640" y1="240" x2="710" y2="240" marker-end="url(#a)"/>
+<rect class="box" x="716" y="84" width="228" height="300" rx="8"/>
+<text class="h" x="732" y="112">Snapshot</text>
+<text class="code" x="732" y="132">jvmeter-PID.json.gz</text>
+<rect class="inner" x="732" y="148" width="196" height="118" rx="6"/>
+<rect class="hl" x="736" y="168" width="188" height="40" rx="3"/>
+<text class="code" x="744" y="164">{</text>
+<text class="code" x="752" y="184">&quot;about&quot;: [ … ],</text>
+<text class="code" x="752" y="202">&quot;summary&quot;: { … },</text>
+<text class="code" x="752" y="224">&quot;cpu&quot;: { … },</text>
+<text class="code" x="752" y="242">&quot;gc&quot;: { … }, …</text>
+<text class="code" x="744" y="260">}</text>
+<circle class="badge" cx="742" cy="290" r="10"/>
+<text class="num" x="742" y="294" text-anchor="middle">6</text>
+<text class="what" x="760" y="288">the meaning and a summary</text>
+<text class="what" x="760" y="304">come first</text>
+<text class="what" x="732" y="334">Read by</text>
+<rect class="chip" x="732" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="760.0" y="363" text-anchor="middle">people</text>
+<rect class="chip" x="802" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="830.0" y="363" text-anchor="middle">GUI</text>
+<rect class="chip" x="872" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="900.0" y="363" text-anchor="middle">LLM</text>
+</svg>

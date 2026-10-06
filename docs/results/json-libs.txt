@@ -1,0 +1,7 @@
+payloads: list=9351B tree=98926B
+lib         listRead ms  treeRead ms treeWrite ms
+Gson               43.9       1050.5       1675.3
+Jackson            44.4        854.0       1376.5
+Avaje              30.9        455.8        831.3
+Jr-ann             48.2        831.1       1352.4
+Afterburner         29.3        655.6       1123.5

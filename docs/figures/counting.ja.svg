@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="522" viewBox="0 0 960 522" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
+<title id="t">呼び出しは数えるだけ、時間はサンプリングで</title>
+<desc id="d">jvmeter は呼び出しごとにカウンタを 1 増やすだけで時刻は取得せず、時間は JFR が 1 ms ごとに記録するスタックから見積もる。fib(35) の実行時間は、この方式で 1.8 倍、呼び出しごとに時刻を取得する方式で約 39 倍、JProfiler の Instrumentation で 292 倍。</desc>
+<style>
+  .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
+  .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
+  .lead { fill: #0b0b0b; font-size: 20px; font-weight: 700 } .h { fill: #0b0b0b; font-size: 15px; font-weight: 700 }
+  .label { fill: #0b0b0b; font-size: 13px; font-weight: 600 } .sub { fill: #52514e; font-size: 13px }
+  .what { fill: #6b6a65; font-size: 12px } .value { fill: #0b0b0b; font-size: 13px; font-weight: 700 }
+  .code { fill: #0b0b0b; font-size: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .dim { fill: #9a9890 } .termtext { fill: #e6edf3; font-size: 11.5px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .badge { fill: #2a78d6 } .num { fill: #ffffff; font-size: 12px; font-weight: 700 }
+  .arrow { stroke: #8a8983; stroke-width: 2; fill: none } .head { fill: #8a8983 } .tick { stroke: #2a78d6; stroke-width: 2 }
+  .sample { stroke: #eb6834; stroke-width: 1.5; stroke-dasharray: 4 3 } .stack { fill: #eb6834 }
+  .jvmeter { fill: #2a78d6 } .jprofiler { fill: #eb6834 } .other { fill: #b5b4ab } .axis { stroke: #c3c2b7 }
+  .bad { fill: #d4382c } .warn { fill: #e0a100 }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19 } .box { fill: #222220; stroke: #383835 } .inner { fill: #2a2a28; stroke: #383835 }
+    .hl { fill: #1d3350 } .chip { fill: #222220; stroke: #4a4945 } .term { fill: #0d1117 }
+    .lead, .h, .label, .code, .value { fill: #ffffff } .sub { fill: #c3c2b7 } .what { fill: #9a9890 } .dim { fill: #6b6a65 }
+    .badge, .jvmeter { fill: #3987e5 } .tick { stroke: #3987e5 } .jprofiler, .stack { fill: #d95926 } .sample { stroke: #d95926 }
+    .other { fill: #5c5b55 } .axis { stroke: #4a4945 }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bg" width="960" height="522" rx="8"/>
+<text class="lead" x="16" y="36">呼び出しは数えるだけ、時間はサンプリングで</text>
+<text class="sub" x="16" y="60">呼び出しのたびに時刻を取得する方式では、小さなメソッドほど速度が大きく落ちます。jvmeter は呼び出しごとにカウンタを 1 増やすだけで、</text>
+<text class="sub" x="16" y="78">時間は JFR が 1 ms ごとに記録するスタックから見積もります。</text>
+<rect class="box" x="16" y="100" width="928" height="226" rx="8"/>
+<text class="h" x="32" y="126">あるスレッドの 5 ms 間</text>
+<line class="axis" x1="200" y1="196" x2="920" y2="196"/>
+<text class="what" x="200.0" y="278" text-anchor="middle">0 ms</text>
+<text class="what" x="344.0" y="278" text-anchor="middle">1 ms</text>
+<text class="what" x="488.0" y="278" text-anchor="middle">2 ms</text>
+<text class="what" x="632.0" y="278" text-anchor="middle">3 ms</text>
+<text class="what" x="776.0" y="278" text-anchor="middle">4 ms</text>
+<text class="what" x="920.0" y="278" text-anchor="middle">5 ms</text>
+<line class="tick" x1="205" y1="174" x2="205" y2="190"/>
+<line class="tick" x1="215" y1="174" x2="215" y2="190"/>
+<line class="tick" x1="225" y1="174" x2="225" y2="190"/>
+<line class="tick" x1="235" y1="174" x2="235" y2="190"/>
+<line class="tick" x1="245" y1="174" x2="245" y2="190"/>
+<line class="tick" x1="255" y1="174" x2="255" y2="190"/>
+<line class="tick" x1="265" y1="174" x2="265" y2="190"/>
+<line class="tick" x1="275" y1="174" x2="275" y2="190"/>
+<line class="tick" x1="285" y1="174" x2="285" y2="190"/>
+<line class="tick" x1="295" y1="174" x2="295" y2="190"/>
+<line class="tick" x1="305" y1="174" x2="305" y2="190"/>
+<line class="tick" x1="315" y1="174" x2="315" y2="190"/>
+<line class="tick" x1="325" y1="174" x2="325" y2="190"/>
+<line class="tick" x1="335" y1="174" x2="335" y2="190"/>
+<line class="tick" x1="345" y1="174" x2="345" y2="190"/>
+<line class="tick" x1="355" y1="174" x2="355" y2="190"/>
+<line class="tick" x1="365" y1="174" x2="365" y2="190"/>
+<line class="tick" x1="375" y1="174" x2="375" y2="190"/>
+<line class="tick" x1="385" y1="174" x2="385" y2="190"/>
+<line class="tick" x1="395" y1="174" x2="395" y2="190"/>
+<line class="tick" x1="405" y1="174" x2="405" y2="190"/>
+<line class="tick" x1="415" y1="174" x2="415" y2="190"/>
+<line class="tick" x1="425" y1="174" x2="425" y2="190"/>
+<line class="tick" x1="435" y1="174" x2="435" y2="190"/>
+<line class="tick" x1="445" y1="174" x2="445" y2="190"/>
+<line class="tick" x1="455" y1="174" x2="455" y2="190"/>
+<line class="tick" x1="465" y1="174" x2="465" y2="190"/>
+<line class="tick" x1="475" y1="174" x2="475" y2="190"/>
+<line class="tick" x1="485" y1="174" x2="485" y2="190"/>
+<line class="tick" x1="495" y1="174" x2="495" y2="190"/>
+<line class="tick" x1="505" y1="174" x2="505" y2="190"/>
+<line class="tick" x1="515" y1="174" x2="515" y2="190"/>
+<line class="tick" x1="525" y1="174" x2="525" y2="190"/>
+<line class="tick" x1="535" y1="174" x2="535" y2="190"/>
+<line class="tick" x1="545" y1="174" x2="545" y2="190"/>
+<line class="tick" x1="555" y1="174" x2="555" y2="190"/>
+<line class="tick" x1="565" y1="174" x2="565" y2="190"/>
+<line class="tick" x1="575" y1="174" x2="575" y2="190"/>
+<line class="tick" x1="585" y1="174" x2="585" y2="190"/>
+<line class="tick" x1="595" y1="174" x2="595" y2="190"/>
+<line class="tick" x1="605" y1="174" x2="605" y2="190"/>
+<line class="tick" x1="615" y1="174" x2="615" y2="190"/>
+<line class="tick" x1="625" y1="174" x2="625" y2="190"/>
+<line class="tick" x1="635" y1="174" x2="635" y2="190"/>
+<line class="tick" x1="645" y1="174" x2="645" y2="190"/>
+<line class="tick" x1="655" y1="174" x2="655" y2="190"/>
+<line class="tick" x1="665" y1="174" x2="665" y2="190"/>
+<line class="tick" x1="675" y1="174" x2="675" y2="190"/>
+<line class="tick" x1="685" y1="174" x2="685" y2="190"/>
+<line class="tick" x1="695" y1="174" x2="695" y2="190"/>
+<line class="tick" x1="705" y1="174" x2="705" y2="190"/>
+<line class="tick" x1="715" y1="174" x2="715" y2="190"/>
+<line class="tick" x1="725" y1="174" x2="725" y2="190"/>
+<line class="tick" x1="735" y1="174" x2="735" y2="190"/>
+<line class="tick" x1="745" y1="174" x2="745" y2="190"/>
+<line class="tick" x1="755" y1="174" x2="755" y2="190"/>
+<line class="tick" x1="765" y1="174" x2="765" y2="190"/>
+<line class="tick" x1="775" y1="174" x2="775" y2="190"/>
+<line class="tick" x1="785" y1="174" x2="785" y2="190"/>
+<line class="tick" x1="795" y1="174" x2="795" y2="190"/>
+<line class="tick" x1="805" y1="174" x2="805" y2="190"/>
+<line class="tick" x1="815" y1="174" x2="815" y2="190"/>
+<line class="tick" x1="825" y1="174" x2="825" y2="190"/>
+<line class="tick" x1="835" y1="174" x2="835" y2="190"/>
+<line class="tick" x1="845" y1="174" x2="845" y2="190"/>
+<line class="tick" x1="855" y1="174" x2="855" y2="190"/>
+<line class="tick" x1="865" y1="174" x2="865" y2="190"/>
+<line class="tick" x1="875" y1="174" x2="875" y2="190"/>
+<line class="tick" x1="885" y1="174" x2="885" y2="190"/>
+<line class="tick" x1="895" y1="174" x2="895" y2="190"/>
+<line class="tick" x1="905" y1="174" x2="905" y2="190"/>
+<line class="tick" x1="915" y1="174" x2="915" y2="190"/>
+<text class="what" x="200" y="166">+1 +1 +1 +1 …</text>
+<line class="sample" x1="344.0" y1="200" x2="344.0" y2="260"/>
+<rect class="stack" x="322.0" y="242" width="18" height="9" rx="2"/>
+<rect class="stack" x="322.0" y="230" width="18" height="9" rx="2"/>
+<rect class="stack" x="322.0" y="218" width="18" height="9" rx="2"/>
+<line class="sample" x1="488.0" y1="200" x2="488.0" y2="260"/>
+<rect class="stack" x="466.0" y="242" width="18" height="9" rx="2"/>
+<rect class="stack" x="466.0" y="230" width="18" height="9" rx="2"/>
+<rect class="stack" x="466.0" y="218" width="18" height="9" rx="2"/>
+<line class="sample" x1="632.0" y1="200" x2="632.0" y2="260"/>
+<rect class="stack" x="610.0" y="242" width="18" height="9" rx="2"/>
+<rect class="stack" x="610.0" y="230" width="18" height="9" rx="2"/>
+<rect class="stack" x="610.0" y="218" width="18" height="9" rx="2"/>
+<line class="sample" x1="776.0" y1="200" x2="776.0" y2="260"/>
+<rect class="stack" x="754.0" y="242" width="18" height="9" rx="2"/>
+<rect class="stack" x="754.0" y="230" width="18" height="9" rx="2"/>
+<rect class="stack" x="754.0" y="218" width="18" height="9" rx="2"/>
+<line class="sample" x1="920.0" y1="200" x2="920.0" y2="260"/>
+<rect class="stack" x="898.0" y="242" width="18" height="9" rx="2"/>
+<rect class="stack" x="898.0" y="230" width="18" height="9" rx="2"/>
+<rect class="stack" x="898.0" y="218" width="18" height="9" rx="2"/>
+<text class="label" x="184" y="182" text-anchor="end">呼び出しごと</text>
+<text class="code" x="184" y="198" text-anchor="end">count += 1</text>
+<text class="label" x="184" y="240" text-anchor="end">1 ms ごと</text>
+<text class="what" x="184" y="256" text-anchor="end">JFR がスタックを記録</text>
+<text class="label" x="32" y="310">呼び出し回数 = カウンタの値（正確）</text>
+<text class="label" x="300" y="310">時間 ≈ サンプルに現れた回数 × 1 ms（推定値。数秒以上の記録を推奨）</text>
+<rect class="box" x="16" y="342" width="928" height="164" rx="8"/>
+<text class="h" x="32" y="368">fib(35) の実行時間（プロファイラなし = 1、対数目盛）</text>
+<text class="what" x="32" y="388">ほとんど処理のないメソッドを約 3,000 万回呼ぶ、呼び出しを数える方式にとって最悪のケース</text>
+<line class="axis" x1="220" y1="398" x2="220" y2="490"/>
+<text class="label" x="208" y="416" text-anchor="end">カウンタ + JFR（jvmeter）</text>
+<rect class="jvmeter" x="220" y="404" width="61" height="16" rx="3"/>
+<text class="value" x="289" y="417">1.8 倍</text>
+<text class="label" x="208" y="448" text-anchor="end">呼び出しごとに時刻を取得</text>
+<rect class="other" x="220" y="436" width="377" height="16" rx="3"/>
+<text class="value" x="605" y="449">約 39 倍</text>
+<text class="label" x="208" y="480" text-anchor="end">JProfiler Instrumentation</text>
+<rect class="jprofiler" x="220" y="468" width="585" height="16" rx="3"/>
+<text class="value" x="813" y="481">292 倍</text>
+</svg>

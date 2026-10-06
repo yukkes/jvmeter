@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="496" viewBox="0 0 960 496" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
+<title id="t">LLM がそのまま読めるスナップショット</title>
+<desc id="d">スナップショットは about（フィールドと単位の意味）と summary（ホットスポット、GC、スレッド、メモリ、検出した問題）で始まり、生データが後に続く。zcat で先頭 80 行を LLM に渡すと、ロック待ち、ヒープの増加、I/O 待ち、CPU を使うメソッドがわかる。</desc>
+<style>
+  .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
+  .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
+  .lead { fill: #0b0b0b; font-size: 20px; font-weight: 700 } .h { fill: #0b0b0b; font-size: 15px; font-weight: 700 }
+  .label { fill: #0b0b0b; font-size: 13px; font-weight: 600 } .sub { fill: #52514e; font-size: 13px }
+  .what { fill: #6b6a65; font-size: 12px } .value { fill: #0b0b0b; font-size: 13px; font-weight: 700 }
+  .code { fill: #0b0b0b; font-size: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .dim { fill: #9a9890 } .termtext { fill: #e6edf3; font-size: 11.5px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .badge { fill: #2a78d6 } .num { fill: #ffffff; font-size: 12px; font-weight: 700 }
+  .arrow { stroke: #8a8983; stroke-width: 2; fill: none } .head { fill: #8a8983 } .tick { stroke: #2a78d6; stroke-width: 2 }
+  .sample { stroke: #eb6834; stroke-width: 1.5; stroke-dasharray: 4 3 } .stack { fill: #eb6834 }
+  .jvmeter { fill: #2a78d6 } .jprofiler { fill: #eb6834 } .other { fill: #b5b4ab } .axis { stroke: #c3c2b7 }
+  .bad { fill: #d4382c } .warn { fill: #e0a100 }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19 } .box { fill: #222220; stroke: #383835 } .inner { fill: #2a2a28; stroke: #383835 }
+    .hl { fill: #1d3350 } .chip { fill: #222220; stroke: #4a4945 } .term { fill: #0d1117 }
+    .lead, .h, .label, .code, .value { fill: #ffffff } .sub { fill: #c3c2b7 } .what { fill: #9a9890 } .dim { fill: #6b6a65 }
+    .badge, .jvmeter { fill: #3987e5 } .tick { stroke: #3987e5 } .jprofiler, .stack { fill: #d95926 } .sample { stroke: #d95926 }
+    .other { fill: #5c5b55 } .axis { stroke: #4a4945 }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bg" width="960" height="496" rx="8"/>
+<text class="lead" x="16" y="36">LLM がそのまま読めるスナップショット</text>
+<text class="sub" x="16" y="60">ファイルの先頭に、項目と単位の説明（about）と要約（summary）を置いています。</text>
+<text class="sub" x="16" y="78">LLM に先頭の 80 行を渡すだけで、生データを読ませなくてもボトルネックを特定できます。</text>
+<rect class="box" x="16" y="100" width="600" height="380" rx="8"/>
+<text class="code" x="32" y="128">jvmeter-PID.json.gz</text>
+<rect class="inner" x="32" y="140" width="568" height="324" rx="6"/>
+<rect class="hl" x="36" y="191" width="400" height="22" rx="3"/>
+<rect class="hl" x="36" y="215" width="400" height="152" rx="3"/>
+<text class="code" x="44" y="162">{</text>
+<text class="code" x="58" y="184">&quot;format&quot;: &quot;jvmeter-snapshot/1&quot;,</text>
+<text class="code" x="58" y="206">&quot;about&quot;: [ &quot;what the fields and units mean&quot;, … ],</text>
+<text class="code" x="58" y="228">&quot;summary&quot;: {</text>
+<text class="code" x="72" y="250">&quot;cpu&quot;: { &quot;hotSpotsBySelfTime&quot;: [ … ] },</text>
+<text class="code" x="72" y="272">&quot;gc&quot;: { … }, &quot;threads&quot;: { … }, &quot;memory&quot;: { … },</text>
+<text class="code" x="72" y="294">&quot;findings&quot;: [</text>
+<text class="code" x="86" y="316">&quot;Threads waited 38 s for OrderCache@3c4d …&quot;,</text>
+<text class="code" x="86" y="338">&quot;Heap after GC keeps growing …&quot;, …</text>
+<text class="code" x="72" y="360">] },</text>
+<text class="code dim" x="58" y="382">&quot;cpu&quot;: { &quot;tree&quot;: { … } },</text>
+<text class="code dim" x="58" y="404">&quot;gc&quot;: { &quot;events&quot;: [ … ] },</text>
+<text class="code dim" x="58" y="426">&quot;threads&quot;: [ … ], …</text>
+<text class="code" x="44" y="448">}</text>
+<text class="label" x="456" y="207">項目と単位の説明</text>
+<text class="label" x="456" y="241">要約</text>
+<text class="what" x="456" y="260">ホットスポット、</text>
+<text class="what" x="456" y="276">GC、スレッド、</text>
+<text class="what" x="456" y="292">メモリ、</text>
+<text class="what" x="456" y="308">検出した問題</text>
+<text class="label" x="456" y="405">生データ</text>
+<text class="what" x="456" y="424">GUI で表示できる</text>
+<line class="arrow" x1="620" y1="290" x2="650" y2="290" marker-end="url(#a)"/>
+<rect class="box" x="656" y="100" width="288" height="380" rx="8"/>
+<text class="h" x="672" y="128">LLM に渡す</text>
+<rect class="term" x="672" y="140" width="256" height="30" rx="4"/>
+<text class="termtext" x="682" y="160">zcat jvmeter-*.json.gz | head -80</text>
+<text class="label" x="672" y="196">先頭の 80 行でわかること</text>
+<rect class="inner" x="672" y="210" width="256" height="50" rx="6"/>
+<rect class="bad" x="672" y="210" width="4" height="50" rx="2"/>
+<text class="code" x="686" y="231">Threads waited 38 s for</text>
+<text class="code" x="686" y="249">OrderCache@3c4d in OrderCache.put</text>
+<rect class="inner" x="672" y="268" width="256" height="50" rx="6"/>
+<rect class="bad" x="672" y="268" width="4" height="50" rx="2"/>
+<text class="code" x="686" y="289">Heap after GC keeps growing</text>
+<text class="code" x="686" y="307">+22.1 MB/min. Possible leak</text>
+<rect class="inner" x="672" y="326" width="256" height="50" rx="6"/>
+<rect class="warn" x="672" y="326" width="4" height="50" rx="2"/>
+<text class="code" x="686" y="347">OrderRepository.save waited</text>
+<text class="code" x="686" y="365">47.5 s for I/O</text>
+<rect class="inner" x="672" y="384" width="256" height="50" rx="6"/>
+<rect class="badge" x="672" y="384" width="4" height="50" rx="2"/>
+<text class="code" x="686" y="405">32 % of CPU time is in</text>
+<text class="code" x="686" y="423">PriceCalculator.calculate</text>
+<text class="what" x="672" y="458">GUI の「見るべき場所」と同じ内容</text>
+</svg>

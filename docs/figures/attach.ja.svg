@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="566" viewBox="0 0 960 566" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
+<title id="t">動いている JVM に、どこからでもアタッチ</title>
+<desc id="d">GUI はローカルでは ProcessBuilder、SSH 先では ssh、Kubernetes の Pod では kubectl exec でコマンドを実行し、ポートフォワードで 127.0.0.1 につなぐ。手順は JVM の一覧、エージェント jar のコピー、再起動なしのアタッチ、トークンで認証した接続。切断するとカウンタを取り除き、元の速度に戻る。</desc>
+<style>
+  .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
+  .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
+  .lead { fill: #0b0b0b; font-size: 20px; font-weight: 700 } .h { fill: #0b0b0b; font-size: 15px; font-weight: 700 }
+  .label { fill: #0b0b0b; font-size: 13px; font-weight: 600 } .sub { fill: #52514e; font-size: 13px }
+  .what { fill: #6b6a65; font-size: 12px } .value { fill: #0b0b0b; font-size: 13px; font-weight: 700 }
+  .code { fill: #0b0b0b; font-size: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .dim { fill: #9a9890 } .termtext { fill: #e6edf3; font-size: 11.5px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .badge { fill: #2a78d6 } .num { fill: #ffffff; font-size: 12px; font-weight: 700 }
+  .arrow { stroke: #8a8983; stroke-width: 2; fill: none } .head { fill: #8a8983 } .tick { stroke: #2a78d6; stroke-width: 2 }
+  .sample { stroke: #eb6834; stroke-width: 1.5; stroke-dasharray: 4 3 } .stack { fill: #eb6834 }
+  .jvmeter { fill: #2a78d6 } .jprofiler { fill: #eb6834 } .other { fill: #b5b4ab } .axis { stroke: #c3c2b7 }
+  .bad { fill: #d4382c } .warn { fill: #e0a100 }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19 } .box { fill: #222220; stroke: #383835 } .inner { fill: #2a2a28; stroke: #383835 }
+    .hl { fill: #1d3350 } .chip { fill: #222220; stroke: #4a4945 } .term { fill: #0d1117 }
+    .lead, .h, .label, .code, .value { fill: #ffffff } .sub { fill: #c3c2b7 } .what { fill: #9a9890 } .dim { fill: #6b6a65 }
+    .badge, .jvmeter { fill: #3987e5 } .tick { stroke: #3987e5 } .jprofiler, .stack { fill: #d95926 } .sample { stroke: #d95926 }
+    .other { fill: #5c5b55 } .axis { stroke: #4a4945 }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bg" width="960" height="566" rx="8"/>
+<text class="lead" x="16" y="36">動いている JVM に、どこからでもアタッチ</text>
+<text class="sub" x="16" y="60">手元の ssh と kubectl をそのまま使うので、~/.ssh/config・ProxyJump・kubeconfig・SSO の設定をそのまま使えます。</text>
+<text class="sub" x="16" y="78">実行するコマンドは画面に表示され、コピーして手で実行することもできます。</text>
+<rect class="box" x="16" y="100" width="220" height="282" rx="8"/>
+<text class="h" x="32" y="128">jvmeter GUI</text>
+<text class="what" x="32" y="148">手元の PC</text>
+<text class="what" x="32" y="186">接続先は常に</text>
+<text class="code" x="32" y="204">127.0.0.1:PORT</text>
+<text class="what" x="32" y="242">接続先ごとの違いは 2 点だけ：</text>
+<text class="what" x="32" y="260">矢印の上：コマンドの実行方法</text>
+<text class="what" x="32" y="278">矢印の下：ポートへの接続方法</text>
+<rect class="box" x="600" y="100" width="344" height="86" rx="8"/>
+<text class="label" x="616" y="132">ローカルの JVM</text>
+<text class="what" x="616" y="152">同じ PC</text>
+<rect class="hl" x="856" y="122" width="72" height="42" rx="6"/>
+<text class="label" x="892" y="139" text-anchor="middle">JVM</text>
+<text class="what" x="892" y="156" text-anchor="middle">+ agent</text>
+<line class="arrow" x1="240" y1="143" x2="594" y2="143" marker-end="url(#a)"/>
+<text class="code" x="580" y="134" text-anchor="end">ProcessBuilder</text>
+<text class="code" x="580" y="162" text-anchor="end">127.0.0.1:PORT</text>
+<rect class="box" x="600" y="198" width="344" height="86" rx="8"/>
+<text class="label" x="616" y="230">SSH 先の JVM</text>
+<text class="what" x="616" y="250">Linux ホスト</text>
+<rect class="hl" x="856" y="220" width="72" height="42" rx="6"/>
+<text class="label" x="892" y="237" text-anchor="middle">JVM</text>
+<text class="what" x="892" y="254" text-anchor="middle">+ agent</text>
+<line class="arrow" x1="240" y1="241" x2="594" y2="241" marker-end="url(#a)"/>
+<text class="code" x="580" y="232" text-anchor="end">ssh HOST -- …</text>
+<text class="code" x="580" y="260" text-anchor="end">ssh -L 127.0.0.1:…</text>
+<rect class="box" x="600" y="296" width="344" height="86" rx="8"/>
+<text class="label" x="616" y="328">Kubernetes Pod の JVM</text>
+<text class="what" x="616" y="348">コンテナ内</text>
+<rect class="hl" x="856" y="318" width="72" height="42" rx="6"/>
+<text class="label" x="892" y="335" text-anchor="middle">JVM</text>
+<text class="what" x="892" y="352" text-anchor="middle">+ agent</text>
+<line class="arrow" x1="240" y1="339" x2="594" y2="339" marker-end="url(#a)"/>
+<text class="code" x="580" y="330" text-anchor="end">kubectl exec …</text>
+<text class="code" x="580" y="358" text-anchor="end">kubectl port-forward</text>
+<rect class="box" x="16" y="398" width="928" height="152" rx="8"/>
+<text class="h" x="32" y="424">Attach and connect で行うこと</text>
+<rect class="inner" x="32" y="440" width="212" height="72" rx="6"/>
+<text class="label" x="46" y="464">JVM の一覧</text>
+<text class="what" x="46" y="488">jps と同じ情報を、</text>
+<text class="what" x="46" y="504">JVM に触れずに取得</text>
+<line class="arrow" x1="246" y1="476" x2="258" y2="476" marker-end="url(#a)"/>
+<rect class="inner" x="260" y="440" width="212" height="72" rx="6"/>
+<text class="label" x="274" y="464">jar のコピー</text>
+<text class="what" x="274" y="488">変更があったときだけ、</text>
+<text class="what" x="274" y="504">本人だけが書き込める場所へ</text>
+<line class="arrow" x1="474" y1="476" x2="486" y2="476" marker-end="url(#a)"/>
+<rect class="inner" x="488" y="440" width="212" height="72" rx="6"/>
+<text class="label" x="502" y="464">アタッチ</text>
+<text class="what" x="502" y="488">再起動せずに読み込み、</text>
+<text class="what" x="502" y="504">計測を開始</text>
+<line class="arrow" x1="702" y1="476" x2="714" y2="476" marker-end="url(#a)"/>
+<rect class="inner" x="716" y="440" width="212" height="72" rx="6"/>
+<text class="label" x="730" y="464">接続</text>
+<text class="what" x="730" y="488">127.0.0.1 のみで待ち受け、</text>
+<text class="what" x="730" y="504">トークンで認証</text>
+<text class="what" x="32" y="536">切断するとカウンタを取り除くので、元の速度に戻ります。エージェントは読み込まれたまま残るため、次回はすぐに接続できます。</text>
+</svg>

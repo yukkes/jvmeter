@@ -1,0 +1,116 @@
+# demo/profilers.sh (CYCLES=2), 2026-10-06: AMD Ryzen AI 7 350 (8 CPUs given to WSL2), 8 GB, on AC power; JProfiler 15.0.4
+# per line and state: the median ratio over the cycles [their range], against the JVMs without a profiler run just before
+# and after in the same cycle (attached: against the same JVM before attaching), and the median round in ms; 272 s for all three
+openjdk version "17.0.20.1" 2026-08-18
+## fib
+  No profiler                          no profiler                1.00x  [1.00-1.00]     18.3 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     18.6 ms
+                                       attached, not recording    1.78x  [1.72-1.84]     33.0 ms
+                                       recording                  1.93x  [1.86-1.99]     35.8 ms
+                                       disconnected               0.99x  [0.99-1.00]     18.5 ms
+  jvmeter -javaagent                   no profiler                1.80x  [1.76-1.84]     33.0 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.72x  [1.71-1.74]     31.5 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.70x  [1.69-1.72]     31.1 ms
+  JProfiler, Full sampling             recording off              0.99x  [0.99-1.00]     18.2 ms
+                                       recording on               0.99x  [0.98-1.00]     18.1 ms
+                                       recording off again        0.98x  [0.98-0.99]     18.0 ms
+  JProfiler, Async sampling            recording off              0.99x  [0.98-0.99]     18.1 ms
+                                       recording on               0.99x  [0.98-0.99]     18.1 ms
+                                       recording off again        0.98x  [0.96-1.01]     18.0 ms
+## load
+  No profiler                          no profiler                1.00x  [1.00-1.00]    101.7 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     99.3 ms
+                                       attached, not recording    1.06x  [1.05-1.08]    105.7 ms
+                                       recording                  1.34x  [1.28-1.39]    133.0 ms
+                                       disconnected               1.09x  [1.05-1.13]    108.3 ms
+  jvmeter -javaagent                   no profiler                1.24x  [1.23-1.26]    126.2 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.20x  [1.20-1.20]    121.9 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.18x  [1.14-1.22]    120.3 ms
+  JProfiler, Full sampling             recording off              1.17x  [1.16-1.18]    118.5 ms
+                                       recording on               1.18x  [1.17-1.18]    119.7 ms
+                                       recording off again        1.16x  [1.15-1.18]    118.4 ms
+  JProfiler, Async sampling            recording off              1.16x  [1.15-1.17]    117.8 ms
+                                       recording on               1.16x  [1.15-1.16]    117.5 ms
+                                       recording off again        1.16x  [1.15-1.17]    118.3 ms
+openjdk version "21.0.12.1" 2026-08-18 LTS
+## fib
+  No profiler                          no profiler                1.00x  [1.00-1.00]     18.1 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     18.1 ms
+                                       attached, not recording    1.69x  [1.66-1.73]     30.8 ms
+                                       recording                  1.81x  [1.77-1.84]     32.8 ms
+                                       disconnected               0.99x  [0.96-1.02]     18.0 ms
+  jvmeter -javaagent                   no profiler                1.77x  [1.76-1.77]     32.0 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.70x  [1.69-1.72]     30.9 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.69x  [1.68-1.71]     30.8 ms
+  JProfiler, Full sampling             recording off              1.00x  [1.00-1.00]     18.2 ms
+                                       recording on               1.01x  [1.01-1.01]     18.3 ms
+                                       recording off again        1.00x  [1.00-1.00]     18.2 ms
+  JProfiler, Async sampling            recording off              0.99x  [0.99-1.00]     18.0 ms
+                                       recording on               1.00x  [0.99-1.00]     18.1 ms
+                                       recording off again        1.00x  [1.00-1.00]     18.1 ms
+## load
+  No profiler                          no profiler                1.00x  [1.00-1.00]     96.9 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     95.7 ms
+                                       attached, not recording    1.07x  [1.05-1.08]    102.0 ms
+                                       recording                  1.39x  [1.38-1.40]    132.8 ms
+                                       disconnected               1.04x  [1.02-1.05]     99.2 ms
+  jvmeter -javaagent                   no profiler                1.29x  [1.26-1.32]    124.7 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.23x  [1.18-1.29]    119.6 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.25x  [1.18-1.32]    120.7 ms
+  JProfiler, Full sampling             recording off              1.23x  [1.20-1.26]    119.5 ms
+                                       recording on               1.24x  [1.20-1.27]    119.8 ms
+                                       recording off again        1.23x  [1.21-1.25]    119.2 ms
+  JProfiler, Async sampling            recording off              1.24x  [1.21-1.27]    120.0 ms
+                                       recording on               1.24x  [1.21-1.26]    119.8 ms
+                                       recording off again        1.25x  [1.21-1.29]    121.2 ms
+openjdk version "25.0.4.1" 2026-08-18
+## fib
+  No profiler                          no profiler                1.00x  [1.00-1.00]     18.1 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     18.1 ms
+                                       attached, not recording    1.66x  [1.65-1.68]     30.1 ms
+                                       recording                  1.80x  [1.80-1.81]     32.5 ms
+                                       disconnected               1.00x  [1.00-1.01]     18.1 ms
+  jvmeter -javaagent                   no profiler                1.78x  [1.77-1.80]     32.2 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.70x  [1.70-1.71]     30.8 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.68x  [1.68-1.69]     30.4 ms
+  JProfiler, Full sampling             recording off              1.00x  [0.99-1.00]     18.1 ms
+                                       recording on               1.00x  [1.00-1.00]     18.1 ms
+                                       recording off again        1.00x  [0.99-1.00]     18.1 ms
+  JProfiler, Async sampling            recording off              1.00x  [1.00-1.00]     18.1 ms
+                                       recording on               1.01x  [1.01-1.01]     18.2 ms
+                                       recording off again        1.00x  [0.99-1.00]     18.1 ms
+## load
+  No profiler                          no profiler                1.00x  [1.00-1.00]     83.2 ms
+  jvmeter, attached                    before attach              1.00x  [1.00-1.00]     89.6 ms
+                                       attached, not recording    1.02x  [1.00-1.03]     91.0 ms
+                                       recording                  1.24x  [1.22-1.25]    110.9 ms
+                                       disconnected               1.10x  [1.09-1.12]     98.9 ms
+  jvmeter -javaagent                   no profiler                1.44x  [1.39-1.48]    119.3 ms
+  jvmeter -javaagent, every 3 ms       no profiler                1.37x  [1.32-1.41]    113.7 ms
+  jvmeter -javaagent, every 5 ms       no profiler                1.33x  [1.28-1.38]    110.4 ms
+  JProfiler, Full sampling             recording off              1.14x  [1.09-1.19]     94.6 ms
+                                       recording on               1.14x  [1.08-1.20]     94.8 ms
+                                       recording off again        1.13x  [1.08-1.19]     94.2 ms
+  JProfiler, Async sampling            recording off              1.11x  [1.08-1.13]     92.1 ms
+                                       recording on               1.11x  [1.08-1.14]     92.3 ms
+                                       recording off again        1.11x  [1.08-1.14]     92.4 ms
+
+# JProfiler Instrumentation (JP_INSTRUMENTATION=1), from an earlier run of the script, one JVM per line (rounds of the first 1 s left out): median round
+"17.0.20.1" fib   recording off                19.3 ms   first round     22.7 ms
+"17.0.20.1" fib   recording on               5671.2 ms   first round   5703.0 ms
+"17.0.20.1" fib   recording off again          23.6 ms   first round     23.6 ms
+"17.0.20.1" load   recording off               117.3 ms   first round    249.5 ms
+"17.0.20.1" load   recording on               2016.3 ms   first round   2053.8 ms
+"17.0.20.1" load   recording off again         133.1 ms   first round    129.4 ms
+"21.0.12.1" fib   recording off                17.1 ms   first round     19.4 ms
+"21.0.12.1" fib   recording on               5236.0 ms   first round   5273.9 ms
+"21.0.12.1" fib   recording off again          23.5 ms   first round     23.2 ms
+"21.0.12.1" load   recording off               116.4 ms   first round    248.5 ms
+"21.0.12.1" load   recording on               1996.1 ms   first round   2044.7 ms
+"21.0.12.1" load   recording off again         131.0 ms   first round    128.5 ms
+"25.0.4.1" fib   recording off                17.6 ms   first round     20.3 ms
+"25.0.4.1" fib   recording on               5260.9 ms   first round   5275.8 ms
+"25.0.4.1" fib   recording off again          24.9 ms   first round     24.5 ms
+"25.0.4.1" load   recording off                95.4 ms   first round    232.0 ms
+"25.0.4.1" load   recording on               1986.6 ms   first round   2017.8 ms
+"25.0.4.1" load   recording off again         115.6 ms   first round    109.8 ms

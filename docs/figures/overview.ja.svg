@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
+<title id="t">jvmeter のしくみと特長</title>
+<desc id="d">動いている JVM（ローカル、SSH 先、Kubernetes の Pod）に再起動せずにエージェントをアタッチする。エージェントは呼び出し回数をメソッドの入口に置いたカウンタで正確に数え、CPU 時間・GC・スレッドを JFR で 1 ms ごとにサンプリングする。GUI は手元の ssh / kubectl 経由でつながり、見るべき場所、CPU、GC 解析、スレッドを表示する。結果は about と summary を先頭に置いたスナップショットに保存され、人・GUI・LLM が読める。</desc>
+<style>
+  .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
+  .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
+  .lead { fill: #0b0b0b; font-size: 20px; font-weight: 700 } .h { fill: #0b0b0b; font-size: 15px; font-weight: 700 }
+  .label { fill: #0b0b0b; font-size: 13px; font-weight: 600 } .sub { fill: #52514e; font-size: 13px }
+  .what { fill: #6b6a65; font-size: 12px } .value { fill: #0b0b0b; font-size: 13px; font-weight: 700 }
+  .code { fill: #0b0b0b; font-size: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .dim { fill: #9a9890 } .termtext { fill: #e6edf3; font-size: 11.5px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace }
+  .badge { fill: #2a78d6 } .num { fill: #ffffff; font-size: 12px; font-weight: 700 }
+  .arrow { stroke: #8a8983; stroke-width: 2; fill: none } .head { fill: #8a8983 } .tick { stroke: #2a78d6; stroke-width: 2 }
+  .sample { stroke: #eb6834; stroke-width: 1.5; stroke-dasharray: 4 3 } .stack { fill: #eb6834 }
+  .jvmeter { fill: #2a78d6 } .jprofiler { fill: #eb6834 } .other { fill: #b5b4ab } .axis { stroke: #c3c2b7 }
+  .bad { fill: #d4382c } .warn { fill: #e0a100 }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19 } .box { fill: #222220; stroke: #383835 } .inner { fill: #2a2a28; stroke: #383835 }
+    .hl { fill: #1d3350 } .chip { fill: #222220; stroke: #4a4945 } .term { fill: #0d1117 }
+    .lead, .h, .label, .code, .value { fill: #ffffff } .sub { fill: #c3c2b7 } .what { fill: #9a9890 } .dim { fill: #6b6a65 }
+    .badge, .jvmeter { fill: #3987e5 } .tick { stroke: #3987e5 } .jprofiler, .stack { fill: #d95926 } .sample { stroke: #d95926 }
+    .other { fill: #5c5b55 } .axis { stroke: #4a4945 }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bg" width="960" height="400" rx="8"/>
+<text class="lead" x="16" y="36">jvmeter のしくみと特長</text>
+<text class="sub" x="16" y="60">動いている JVM にあとから接続し、正確な呼び出し回数と CPU 時間を低い負荷で集めて、人も LLM も読める形で保存します。</text>
+<rect class="box" x="16" y="84" width="300" height="300" rx="8"/>
+<text class="h" x="32" y="112">プロファイル対象の JVM</text>
+<circle class="badge" cx="42" cy="134" r="10"/>
+<text class="num" x="42" y="138" text-anchor="middle">1</text>
+<text class="sub" x="60" y="139">再起動不要：動いたままアタッチ</text>
+<rect class="inner" x="32" y="156" width="268" height="148" rx="6"/>
+<text class="label" x="48" y="180">jvmeter エージェント</text>
+<circle class="badge" cx="58" cy="206" r="10"/>
+<text class="num" x="58" y="210" text-anchor="middle">2</text>
+<text class="label" x="76" y="211">呼び出し回数</text>
+<text class="what" x="76" y="229">メソッドの入口に置いたカウンタで</text>
+<text class="what" x="76" y="245">すべての呼び出しを正確に数える</text>
+<text class="label" x="76" y="271">CPU 時間・GC・スレッド</text>
+<text class="what" x="76" y="289">JFR で 1 ms ごとにサンプリング</text>
+<circle class="badge" cx="42" cy="330" r="10"/>
+<text class="num" x="42" y="334" text-anchor="middle">3</text>
+<text class="sub" x="60" y="335">動いている場所を問わず同じ手順</text>
+<rect class="chip" x="32" y="346" width="68" height="26" rx="13"/>
+<text class="what" x="66.0" y="363" text-anchor="middle">ローカル</text>
+<rect class="chip" x="108" y="346" width="68" height="26" rx="13"/>
+<text class="what" x="142.0" y="363" text-anchor="middle">SSH 先</text>
+<rect class="chip" x="184" y="346" width="116" height="26" rx="13"/>
+<text class="what" x="242.0" y="363" text-anchor="middle">Kubernetes Pod</text>
+<text class="what" x="356" y="210" text-anchor="middle">手元の ssh /</text>
+<text class="what" x="356" y="226" text-anchor="middle">kubectl 経由</text>
+<line class="arrow" x1="320" y1="240" x2="390" y2="240" marker-end="url(#a)"/>
+<text class="what" x="356" y="262" text-anchor="middle">127.0.0.1</text>
+<text class="what" x="356" y="278" text-anchor="middle">のみ</text>
+<text class="what" x="356" y="294" text-anchor="middle">トークン認証</text>
+<rect class="box" x="396" y="84" width="240" height="300" rx="8"/>
+<text class="h" x="412" y="112">jvmeter GUI</text>
+<text class="what" x="412" y="132">約 2 MB の jar 1 つ・Java 17 以上</text>
+<rect class="inner" x="412" y="148" width="208" height="50" rx="6"/>
+<circle class="badge" cx="432" cy="173" r="10"/>
+<text class="num" x="432" y="177" text-anchor="middle">4</text>
+<text class="label" x="450" y="168">見るべき場所</text>
+<text class="what" x="450" y="186">ボトルネックを深刻度順に</text>
+<rect class="inner" x="412" y="206" width="208" height="50" rx="6"/>
+<text class="label" x="450" y="226">CPU</text>
+<text class="what" x="450" y="244">遅いメソッドと呼び出し元</text>
+<rect class="inner" x="412" y="264" width="208" height="50" rx="6"/>
+<circle class="badge" cx="432" cy="289" r="10"/>
+<text class="num" x="432" y="293" text-anchor="middle">5</text>
+<text class="label" x="450" y="284">GC 解析</text>
+<text class="what" x="450" y="302">GC ログ不要（JFR から計算）</text>
+<rect class="inner" x="412" y="322" width="208" height="50" rx="6"/>
+<text class="label" x="450" y="342">スレッド</text>
+<text class="what" x="450" y="360">ロック待ちと I/O 待ちを区別</text>
+<text class="what" x="676" y="226" text-anchor="middle">保存</text>
+<line class="arrow" x1="640" y1="240" x2="710" y2="240" marker-end="url(#a)"/>
+<rect class="box" x="716" y="84" width="228" height="300" rx="8"/>
+<text class="h" x="732" y="112">スナップショット</text>
+<text class="code" x="732" y="132">jvmeter-PID.json.gz</text>
+<rect class="inner" x="732" y="148" width="196" height="118" rx="6"/>
+<rect class="hl" x="736" y="168" width="188" height="40" rx="3"/>
+<text class="code" x="744" y="164">{</text>
+<text class="code" x="752" y="184">&quot;about&quot;: [ … ],</text>
+<text class="code" x="752" y="202">&quot;summary&quot;: { … },</text>
+<text class="code" x="752" y="224">&quot;cpu&quot;: { … },</text>
+<text class="code" x="752" y="242">&quot;gc&quot;: { … }, …</text>
+<text class="code" x="744" y="260">}</text>
+<circle class="badge" cx="742" cy="290" r="10"/>
+<text class="num" x="742" y="294" text-anchor="middle">6</text>
+<text class="what" x="760" y="288">先頭の説明と要約だけで</text>
+<text class="what" x="760" y="304">ボトルネックがわかる</text>
+<text class="what" x="732" y="334">読み手</text>
+<rect class="chip" x="732" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="760.0" y="363" text-anchor="middle">人</text>
+<rect class="chip" x="802" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="830.0" y="363" text-anchor="middle">GUI</text>
+<rect class="chip" x="872" y="346" width="56" height="26" rx="13"/>
+<text class="what" x="900.0" y="363" text-anchor="middle">LLM</text>
+</svg>
