@@ -1,0 +1,15 @@
+# Build and test, run locally with act (GitHub does not read .github/act): act -W .github/act/ci.yml
+name: CI
+on: push
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - run: ./mvnw -B verify
