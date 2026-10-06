@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.yukkes.jvmeter</groupId>
+    <artifactId>jvmeter-parent</artifactId>
+    <version>1.0.0</version>
+  </parent>
+  <artifactId>jvmeter-agent</artifactId>
+  <name>jvmeter agent</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.yukkes.jvmeter</groupId>
+      <artifactId>jvmeter-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm-commons</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <!-- target/jvmeter-agent.jar: a single file (it copies its counters to the boot class path itself) -->
+    <finalName>jvmeter-agent</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Main-Class>jvmeter.agent.Launcher</Main-Class>
+              <!-- list reads jvmstat (as jps does), which the JDK does not export -->
+              <Add-Exports>jdk.internal.jvmstat/sun.jvmstat.monitor</Add-Exports>
+              <Premain-Class>jvmeter.agent.Agent</Premain-Class>
+              <Agent-Class>jvmeter.agent.Agent</Agent-Class>
+              <Can-Redefine-Classes>true</Can-Redefine-Classes>
+              <Can-Retransform-Classes>true</Can-Retransform-Classes>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <!-- relocate ASM so it cannot clash with a copy used by the profiled application.
+                   avaje-jsonb is NOT relocated: relocating io.avaje would also rename the
+                   META-INF/services files that register the generated adapters. -->
+              <relocations>
+                <relocation>
+                  <pattern>org.objectweb.asm</pattern>
+                  <shadedPattern>jvmeter.agent.shaded.asm</shadedPattern>
+                </relocation>
+              </relocations>
+              <!-- merge the META-INF/services entries of avaje-jsonb's generated adapters -->
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <!-- keep only the library classes the agent actually uses -->
+              <minimizeJar>true</minimizeJar>
+              <!-- dependencies only: the agent's own manifest must stay -->
+              <filters>
+                <filter>
+                  <artifact>org.ow2.asm:*</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>io.avaje:*</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/*.MF</exclude>
+                    <!-- its service files register avaje-inject, not our adapters -->
+                    <exclude>META-INF/services/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>io.github.yukkes.jvmeter:jvmeter-core</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/*.MF</exclude>
+                    <exclude>META-INF/maven/**</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
