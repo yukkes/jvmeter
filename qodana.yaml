@@ -1,0 +1,22 @@
+# JetBrains static analysis (IntelliJ inspections); fails on any finding. How to run: AGENTS.md
+version: "1.0"
+linter: jetbrains/qodana-jvm-community:2026.2
+projectJDK: "17"
+profile:
+  name: qodana.recommended
+include:
+  - name: unused          # dead code: classes, methods, fields and parameters nothing uses
+  - name: UnusedReturnValue
+exclude:
+  - name: All
+    paths:
+      - demo/prototype.html
+      - gui/compare/node_modules
+  # reached only from premain / agentmain, which IntelliJ does not count as entry points
+  - name: unused
+    paths:
+      - agent/src/main/java/jvmeter/agent/CountTransformer.java
+      - agent/src/main/java/jvmeter/agent/JfrRecorder.java
+      - agent/src/main/java/jvmeter/agent/MethodRegistry.java
+      - agent/src/main/java/jvmeter/agent/ThreadSampler.java
+failThreshold: 0
