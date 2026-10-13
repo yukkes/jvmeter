@@ -18,7 +18,7 @@ CPU time from JFR sampling. Snapshots are JSON for people, the GUI or an LLM.
 ```bash
 ./mvnw package                    # JDK 17+
 java -javaagent:agent/target/jvmeter-agent.jar -cp demo/target/jvmeter-demo.jar app.Mix
-java -jar gui/target/jvmeter-gui.jar [snapshot.json.gz]
+java -jar gui/target/jvmeter-gui.jar [snapshot.json]
 ```
 
 ## Rules

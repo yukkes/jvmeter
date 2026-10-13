@@ -68,7 +68,7 @@ The agent is bundled in the GUI and copied to the server or container when you a
 ![Attach to a running JVM, wherever it runs](docs/figures/attach.en.svg)
 
 ### 3. A small snapshot an LLM can read as is
-Results are written as gzip-compressed JSON (`.json.gz`). What the fields mean (`about`) and the key results (`summary`) come first,
+Results are written as plain JSON (`.json`), readable in any editor. What the fields mean (`about`) and the key results (`summary`) come first,
 so handing the top of a snapshot to an LLM is enough for it to point at the bottleneck.
 
 ![A snapshot an LLM can read](docs/figures/snapshot.en.svg)
@@ -93,7 +93,7 @@ The apps are not signed: on macOS, allow jvmeter in **System Settings › Privac
 2. Choose **Local**, **SSH** or **Kubernetes**; the JVMs found there are listed.
 3. Select a JVM and enter the packages whose calls should be counted in **Count calls in** (for example `com.example`).
 4. Click **Attach and connect**: recording starts, and the views update every second.
-5. **Save** (the download icon in the top bar) saves a snapshot.
+5. Stop the recording: it is saved to `~/.jvmeter/recordings` (on Windows `%LOCALAPPDATA%\jvmeter\recordings`; also when the JVM or the connection goes away). The Start Center's **Recordings** lists the saved ones.
 
 > **Tip:** to see the views right away, open **Sample data** in the Start Center (a profile of a made-up order service).
 
@@ -110,16 +110,17 @@ java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
   -cp jvmeter-demo.jar app.Mix
 ```
 
-`jvmeter-<PID>.json.gz` is written when the process exits. While it records, the GUI can also connect to watch it live.
+`jvmeter-<PID>.json` is written when the process exits (readable by your user only). While it records, the GUI can also connect to watch it live.
 
 #### Reading a snapshot and handing it to an LLM
 
 ```bash
 # open a snapshot in the GUI (or with the folder icon in the top bar)
-jvmeter/bin/jvmeter jvmeter-12345.json.gz
+jvmeter/bin/jvmeter jvmeter-12345.json
 
 # the first 80 lines (about / summary): give these to an LLM to analyze
-zcat jvmeter-12345.json.gz | head -80
+head -80 jvmeter-12345.json
+# Windows PowerShell: Get-Content jvmeter-12345.json -TotalCount 80
 ```
 
 ---
@@ -180,7 +181,7 @@ Run time against no profiler (1.00×), on JDK 25, with jvmeter attached to a run
 |---|---|---|
 | `-javaagent:jvmeter-agent.jar=include=<pkg>`<br>`-Djvmeter.include=<pkg>` | Comma-separated packages whose calls are counted.<br>CPU time is sampled in every method either way. | the main class's package |
 | `-Djvmeter.period=<ms>` | Sampling interval in milliseconds. Raise it for long recordings of busy services with many threads. | `1` |
-| `-Djvmeter.out=<path>` | Where the snapshot is written when the JVM exits. | `jvmeter-<PID>.json.gz` |
+| `-Djvmeter.out=<path>` | Where the snapshot is written when the JVM exits. | `jvmeter-<PID>.json` |
 | `-javaagent:jvmeter-agent.jar=port=<port>` | The port the GUI connects to (listening on `127.0.0.1` and `::1` only). | any free port |
 
 ### The agent jar on the command line

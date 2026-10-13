@@ -142,6 +142,40 @@ class AppTest {
    * like the prototype: no JVM at first; the Start Center lists, attaches, and next time opens
    * where it left off
    */
+  /** a saved recording is listed newest first and opens; the saved line draws */
+  @Test
+  void recordingsListOpensASavedRecording(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+      throws Exception {
+    java.nio.file.Path f =
+        jvmeter.core.Recordings.save(new jvmeter.core.Session(Snapshot.loadSample()), dir);
+    App[] a = new App[1];
+    StartCenter[] sc = new StartCenter[1];
+    onEdt(
+        () -> {
+          App.applyLaf();
+          a[0] = new App(null);
+          a[0].recordingsDir = dir;
+          sc[0] = new StartCenter(a[0], () -> {}, "recordings");
+        });
+    await(() -> sc[0].recs != null);
+    onEdt(
+        () -> {
+          assertEquals(f, sc[0].recSel.file());
+          sc[0].setSize(920, 560);
+          Shot.layout(sc[0]);
+          sc[0].paint(new BufferedImage(920, 560, BufferedImage.TYPE_INT_RGB).createGraphics());
+          sc[0].openRecording();
+          assertEquals(34567, a[0].s.snap.target.pid);
+          a[0].saved = f; // as after a recording stops
+          a[0].render();
+          paint(a[0]);
+          assertTrue(
+              find(a[0], Ui.Btn.class).stream()
+                  .anyMatch(
+                      b -> "Show in folder".equals(b.getAccessibleContext().getAccessibleName())));
+        });
+  }
+
   @Test
   void startCenterResumesWhereItLeftOff() throws Exception {
     App[] a = new App[1];

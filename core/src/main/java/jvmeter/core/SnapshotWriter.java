@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Writes a session as snapshot JSON.
@@ -44,12 +43,9 @@ public final class SnapshotWriter {
     return JSON.toJsonPretty(r) + "\n";
   }
 
-  /**
-   * Writes the snapshot as gzip-compressed JSON (read it with {@code zcat file.json.gz} or {@link
-   * Snapshot#read}).
-   */
+  /** Writes the snapshot as JSON (UTF-8), which people, editors and LLMs read as it is */
   public static void write(Session s, Path file) throws IOException {
-    try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(file))) {
+    try (OutputStream out = Files.newOutputStream(file)) {
       out.write(write(s).getBytes(StandardCharsets.UTF_8));
     }
   }

@@ -15,7 +15,7 @@ import javax.swing.SwingUtilities;
 import jvmeter.core.Snapshot;
 
 /**
- * java -jar jvmeter-gui.jar [snapshot.json.gz] — without a file, the Start Center opens first (like
+ * java -jar jvmeter-gui.jar [snapshot.json] — without a file, the Start Center opens first (like
  * JProfiler)
  */
 public final class Main {
@@ -65,6 +65,14 @@ public final class Main {
           app.setPreferredSize(new Dimension(1280, 800));
           f.setContentPane(app);
           f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+          // a recording in progress is saved before the GUI exits
+          f.addWindowListener(
+              new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                  app.disconnect();
+                }
+              });
           f.pack();
           f.setLocationRelativeTo(null);
           f.setVisible(true);

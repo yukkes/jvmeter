@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="496" viewBox="0 0 960 496" role="img" aria-labelledby="t d" font-family="Inter, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif">
 <title id="t">LLM がそのまま読めるスナップショット</title>
-<desc id="d">スナップショットは about（フィールドと単位の意味）と summary（ホットスポット、GC、スレッド、メモリ、検出した問題）で始まり、生データが後に続く。zcat で先頭 80 行を LLM に渡すと、ロック待ち、ヒープの増加、I/O 待ち、CPU を使うメソッドがわかる。</desc>
+<desc id="d">スナップショットは about（フィールドと単位の意味）と summary（ホットスポット、GC、スレッド、メモリ、検出した問題）で始まり、生データが後に続く。先頭 80 行を LLM に渡すと、ロック待ち、ヒープの増加、I/O 待ち、CPU を使うメソッドがわかる。</desc>
 <style>
   .bg { fill: #fcfcfb } .box { fill: #ffffff; stroke: #e1e0d9 } .inner { fill: #f5f5f3; stroke: #e1e0d9 }
   .hl { fill: #e6f0fb } .chip { fill: #ffffff; stroke: #c3c2b7 } .term { fill: #24292f }
@@ -28,7 +28,7 @@
 <text class="sub" x="16" y="60">ファイルの先頭に、項目と単位の説明（about）と要約（summary）を置いています。</text>
 <text class="sub" x="16" y="78">LLM に先頭の 80 行を渡すだけで、生データを読ませなくてもボトルネックを特定できます。</text>
 <rect class="box" x="16" y="100" width="600" height="380" rx="8"/>
-<text class="code" x="32" y="128">jvmeter-PID.json.gz</text>
+<text class="code" x="32" y="128">jvmeter-PID.json</text>
 <rect class="inner" x="32" y="140" width="568" height="324" rx="6"/>
 <rect class="hl" x="36" y="191" width="400" height="22" rx="3"/>
 <rect class="hl" x="36" y="215" width="400" height="152" rx="3"/>
@@ -58,7 +58,7 @@
 <rect class="box" x="656" y="100" width="288" height="380" rx="8"/>
 <text class="h" x="672" y="128">LLM に渡す</text>
 <rect class="term" x="672" y="140" width="256" height="30" rx="4"/>
-<text class="termtext" x="682" y="160">zcat jvmeter-*.json.gz | head -80</text>
+<text class="termtext" x="682" y="160">head -80 jvmeter-*.json</text>
 <text class="label" x="672" y="196">先頭の 80 行でわかること</text>
 <rect class="inner" x="672" y="210" width="256" height="50" rx="6"/>
 <rect class="bad" x="672" y="210" width="4" height="50" rx="2"/>

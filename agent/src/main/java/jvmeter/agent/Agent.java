@@ -17,9 +17,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import jvmeter.core.Live;
+import jvmeter.core.Recordings;
 import jvmeter.core.Session;
 import jvmeter.core.Snapshot;
-import jvmeter.core.SnapshotWriter;
 import jvmeter.core.Targets;
 
 /**
@@ -30,8 +30,8 @@ import jvmeter.core.Targets;
  *
  * <p>Agent options: include=com.example,app (packages whose calls are counted; default: the main
  * class's package). System properties: jvmeter.include (the same), jvmeter.period (sampling
- * interval in ms, default 1), jvmeter.out (snapshot written at exit as gzip-compressed JSON,
- * default jvmeter-PID.json.gz)
+ * interval in ms, default 1), jvmeter.out (snapshot written at exit as JSON, readable by this user
+ * only, default jvmeter-PID.json)
  */
 public final class Agent {
 
@@ -296,10 +296,9 @@ public final class Agent {
     r.histogram();
     r.stop();
     Snapshot snap = r.snapshot(target());
-    Path out =
-        Path.of(System.getProperty("jvmeter.out", "jvmeter-" + snap.target.pid + ".json.gz"));
+    Path out = Path.of(System.getProperty("jvmeter.out", "jvmeter-" + snap.target.pid + ".json"));
     try {
-      SnapshotWriter.write(new Session(snap), out);
+      Recordings.write(new Session(snap), out);
       System.err.println("[jvmeter] snapshot written to " + out.toAbsolutePath());
     } catch (IOException | RuntimeException e) {
       System.err.println("[jvmeter] could not write the snapshot: " + e);

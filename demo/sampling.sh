@@ -46,7 +46,7 @@ run "No CDS module graph (--add-modules)" --add-modules=java.management -cp $CP 
 run "An agent that does nothing (-javaagent)" -javaagent:"$OUT/empty-agent.jar" -cp $CP app.Rounds map 7 none
 run "JFR started with the JVM, no events" "$JFR=none" -cp $CP app.Rounds map 7 none
 run "JFR started after warming up, no events" -cp $CP app.Rounds map 7 jfr
-run "jvmeter -javaagent, recording" -javaagent:$AGENT -Djvmeter.out="$OUT/s.json.gz" -cp $CP app.Rounds map 7 none
+run "jvmeter -javaagent, recording" -javaagent:$AGENT -Djvmeter.out="$OUT/s.json" -cp $CP app.Rounds map 7 none
 run "jvmeter, attached" -cp $CP app.Rounds map 7 jvmeter $AGENT
 echo "## HashMap.hash: places where C2 inlined Integer.hashCode (-XX:+PrintInlining, app.Parts)"
 for c in "No profiler:" "An agent that does nothing:-javaagent:$OUT/empty-agent.jar" "JFR started with the JVM:$JFR=none"; do

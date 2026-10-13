@@ -8,7 +8,7 @@
   for its previous increment to be stored (fib(35): 1.8× instead of 2.6×).
 - **Time**: `JfrRecorder` subscribes to JFR `jdk.ExecutionSample` every 1 ms in the same JVM.
   Self = top of the stack, total = anywhere on the stack. Time ≈ samples × interval.
-- **Snapshot**: with `-javaagent`, `Agent` writes the snapshot at exit (`jvmeter-PID.json.gz`); samples
+- **Snapshot**: with `-javaagent`, `Agent` writes the snapshot at exit (`jvmeter-PID.json`); samples
   inside the counter are profiling overhead and left out of the call tree.
 
 `-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints` is required. Without it, time in inlined methods

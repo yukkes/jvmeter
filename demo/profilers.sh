@@ -45,9 +45,9 @@ for c in $(seq "$CYCLES"); do
     b1=$(base $w)
     {
       line $w "jvmeter, attached" 0 -cp $CP app.Rounds $w "$ROUNDS" jvmeter $AGENT
-      line $w "jvmeter -javaagent" "$b1" -javaagent:$AGENT -Djvmeter.out="$OUT/s.json.gz" -cp $CP app.Rounds $w "$ROUNDS" none
+      line $w "jvmeter -javaagent" "$b1" -javaagent:$AGENT -Djvmeter.out="$OUT/s.json" -cp $CP app.Rounds $w "$ROUNDS" none
       for ms in 3 5; do
-        line $w "jvmeter -javaagent, every $ms ms" "$b1" -javaagent:$AGENT -Djvmeter.period=$ms -Djvmeter.out="$OUT/s.json.gz" \
+        line $w "jvmeter -javaagent, every $ms ms" "$b1" -javaagent:$AGENT -Djvmeter.period=$ms -Djvmeter.out="$OUT/s.json" \
           -cp $CP app.Rounds $w "$ROUNDS" none
       done
       if [ -n "${JPROFILER_HOME:-}" ]; then

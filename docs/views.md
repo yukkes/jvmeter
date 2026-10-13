@@ -36,9 +36,14 @@ The Swing GUI (`gui/`) has the same views and behavior and is checked against th
 The top bar reads as a breadcrumb, `jvmeter / target`: the target JVM's name, with its pid · JVM and where it runs (an SSH host,
 or context/namespace/pod) below; clicking it (the chevron) opens the Start Center again. With no JVM it reads "Connect to a JVM".
 The recording button shows the time recorded and **starts and stops recording** (a red dot to start; while recording it is tinted
-red, with a red dot and a stop square). Frameless icon buttons open and **save a snapshot** (the GUI writes `.json.gz` with `about`
-and `summary`; the prototype downloads the raw JSON) and switch between light and dark mode (the choice is remembered in the
-browser; by default it follows the OS). On the sample, a "Sample data" label (a Material 3 tonal container: filled, no outline, not a button) says it is not a real recording.
+red, with a red dot and a stop square). **Stopping saves the recording**: there is no Save button. The GUI writes
+`NAME.json` (with `about` and `summary`) to `~/.jvmeter/recordings` (on Windows `%LOCALAPPDATA%\jvmeter\recordings`, which a
+roaming profile does not copy at every logon; the GUI shows the full path there), also when the JVM or the connection goes away or
+another session opens, and a line at the bottom says where, with **Show in folder**; it stays until closed or the next recording
+starts. NAME is the start time, the main class, where the JVM ran and its pid (`20261004-143000-OrderServiceApp-localhost-34567`).
+The Start Center's **Recordings** lists them, newest first. Frameless icon buttons open a recording (a file dialog in
+`~/.jvmeter/recordings`) and switch between light and dark mode (the choice is remembered in the browser; by default it follows
+the OS). On the sample, a "Sample data" label (a Material 3 tonal container: filled, no outline, not a button) says it is not a real recording.
 Calls are counted exactly by instrumentation and time comes from JFR sampling ([`design.md`](design.md)); there is no mode switch.
 Methods seen only in samples (outside the counted packages) have no call count: Calls and Average show "—".
 On the CPU view, the right panel shows the selected method's Self / Total / calls / per-call time, its time breakdown
@@ -57,8 +62,8 @@ CPUs saturated or a growing thread count; and the application method using the m
 complexity / call tracer / outlier detection, MBeans. The agent (`agent/`) cannot provide the data yet,
 or they are not essential for a first investigation.
 
-**Snapshot format** (open it with the folder icon). The agent writes it gzip-compressed (`.json.gz`);
-plain `.json` opens too. Reading it by hand or with an LLM: `zcat file.json.gz | head -80`.
+**Snapshot format** (open it with the folder icon). Plain JSON (`.json`), so an editor, `grep` or an LLM reads it as it is:
+`head -80 file.json` (PowerShell: `Get-Content file.json -TotalCount 80`).
 
 ```json
 {

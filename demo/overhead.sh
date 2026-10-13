@@ -36,8 +36,8 @@ for b in "fib app.Bench 35 30" "load app.Load 10"; do
   name=$1 main="${*:2}"
   for i in $(seq "$RUNS"); do
     run "$main" --add-modules=java.management >> "$OUT/$name-none"
-    run "$main" $OPTS -javaagent:agent/target/jvmeter-agent.jar -Djvmeter.out="$OUT/s.json.gz" >> "$OUT/$name-agent"
-    [ -n "${BASE:-}" ] && run "$main" $OPTS -javaagent:"$BASE" -Djvmeter.out="$OUT/s.json.gz" >> "$OUT/$name-base"
+    run "$main" $OPTS -javaagent:agent/target/jvmeter-agent.jar -Djvmeter.out="$OUT/s.json" >> "$OUT/$name-agent"
+    [ -n "${BASE:-}" ] && run "$main" $OPTS -javaagent:"$BASE" -Djvmeter.out="$OUT/s.json" >> "$OUT/$name-base"
   done
   none=$(median < "$OUT/$name-none") agent=$(median < "$OUT/$name-agent")
   limit=$([ "$name" = fib ] && echo "$FIB_LIMIT" || echo "$LOAD_LIMIT")

@@ -20,13 +20,15 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.JTextComponent;
 import jvmeter.core.Connector;
+import jvmeter.core.Fmt;
+import jvmeter.core.Recordings;
 import jvmeter.core.Snapshot;
 import jvmeter.core.Targets;
 
 /**
- * The Start Center of demo/prototype.html: where to start (local, SSH, Kubernetes, a snapshot, the
- * sample) on the left, the JVMs there and the commands jvmeter runs on the right (docs/targets.md),
- * run with Connector.
+ * The Start Center of demo/prototype.html: where to start (local, SSH, Kubernetes, the saved
+ * recordings, the sample) on the left, the JVMs there and the commands jvmeter runs on the right
+ * (docs/targets.md), run with Connector.
  */
 final class StartCenter extends JComponent {
 
@@ -50,6 +52,10 @@ final class StartCenter extends JComponent {
       "Uses your own kubectl and kubeconfig; RBAC must allow pods/exec and pods/portforward. The"
           + " container needs sh (to receive the agent jar) and the jdk.attach module; otherwise"
           + " start the JVM with the agent.";
+  static final String NOTE_RECORDINGS =
+      "Each recording is saved here when it stops, as a snapshot (.json) and a JFR file (.jfr)"
+          + " that JDK Mission Control and jfr also read. If the JVM or the connection goes away,"
+          + " what was recorded until then is kept.";
 
   /**
    * the last connection (kept in the preferences): the Start Center opens where it left off and
@@ -117,6 +123,11 @@ final class StartCenter extends JComponent {
   private final JTextField incField = new JTextField();
 
   StartCenter(App app, Runnable close) {
+    this(app, close, null);
+  }
+
+  /** opens on section (null: where it left off) */
+  StartCenter(App app, Runnable close, String section) {
     this.app = app;
     this.close = close;
     last = readLast();
@@ -161,9 +172,11 @@ final class StartCenter extends JComponent {
             });
     Snapshot.Via via = app.s != null ? app.s.snap.target.via : null;
     section(
-        app.s != null
-            ? (via != null ? via.kind : "local")
-            : last.kind != null ? last.kind : "local");
+        section != null
+            ? section
+            : app.s != null
+                ? (via != null ? via.kind : "local")
+                : last.kind != null ? last.kind : "local");
   }
 
   @Override
@@ -239,6 +252,13 @@ final class StartCenter extends JComponent {
    * one last used there)
    */
   void section(String k) {
+    if (k.equals("recordings")) {
+      kind = k;
+      err = null;
+      renderAll();
+      listRecordings();
+      return;
+    }
     kind = k;
     listed = null;
     sel = null;
@@ -481,7 +501,9 @@ final class StartCenter extends JComponent {
                       g.setColor(Theme.line());
                       g.fillRect(0, 0, c.getWidth(), 1);
                     })));
-    nav.add(navBtn("folder_open", "Open snapshot…", false, app::openSnapshot));
+    nav.add(
+        navBtn(
+            "folder_open", "Recordings", kind.equals("recordings"), () -> section("recordings")));
     nav.add(
         navBtn(
             "science",
@@ -493,6 +515,30 @@ final class StartCenter extends JComponent {
             }));
 
     body.removeAll();
+    if (kind.equals("recordings")) {
+      // the directory as a path, and the button that opens it
+      Box path =
+          new Box(Box.ROW)
+              .pad(1, 6, 1, 6)
+              .bg(Theme::sunken)
+              .radius(6)
+              .add(
+                  txt(
+                      Recordings.label(app.recordingsDir),
+                      new Font(Font.MONOSPACED, Font.PLAIN, 12),
+                      Theme::fg,
+                      18));
+      Box dir =
+          new Box(Box.ROW)
+              .gap(10)
+              .with(
+                  path,
+                  btn("folder_open", "Show in folder", app::showFolder),
+                  grow(new Box(Box.ROW)));
+      body.with(note(NOTE_RECORDINGS), dir, jvms);
+      renderParts();
+      return;
+    }
     body.add(
         note(kind.equals("local") ? NOTE_LOCAL : kind.equals("ssh") ? NOTE_SSH : NOTE_KUBECTL));
     Box fields = new Box(Box.ROW).gap(10);
@@ -625,6 +671,10 @@ final class StartCenter extends JComponent {
   void renderParts() {
     foot.removeAll();
     jvms.removeAll();
+    if (kind.equals("recordings")) {
+      renderRecordings();
+      return;
+    }
     Box lb = listBox();
     if (kubeBusy) {
       lb.add(empty("Reading contexts, namespaces and pods with kubectl…", Theme::muted));
@@ -700,6 +750,151 @@ final class StartCenter extends JComponent {
     foot.with(btn(null, "Cancel", close), go);
     revalidate();
     repaint();
+  }
+
+  // ---------- recordings ----------
+
+  /** the saved recordings, newest first; null while they are read */
+  List<Recordings.Entry> recs;
+
+  Recordings.Entry recSel;
+
+  void listRecordings() {
+    recs = null;
+    recSel = null;
+    renderParts();
+    java.nio.file.Path dir = app.recordingsDir;
+    Thread t =
+        new Thread(
+            () -> {
+              List<Recordings.Entry> l = Recordings.list(dir);
+              javax.swing.SwingUtilities.invokeLater(
+                  () -> {
+                    if (kind.equals("recordings")) {
+                      recs = l;
+                      recSel = l.isEmpty() ? null : l.get(0);
+                      renderParts();
+                    }
+                  });
+            },
+            "jvmeter-recordings");
+    t.setDaemon(true);
+    t.start();
+  }
+
+  void selectRecording(Recordings.Entry e) {
+    recSel = e;
+    err = null;
+    renderParts();
+  }
+
+  void openRecording() {
+    if (recSel == null) {
+      return;
+    }
+    try {
+      Snapshot snap = Snapshot.read(recSel.file());
+      close.run();
+      app.open(snap);
+    } catch (java.io.IOException | IllegalArgumentException e) {
+      err = "Could not open " + recSel.file().getFileName() + ": " + e.getMessage();
+      renderParts();
+    }
+  }
+
+  private void renderRecordings() {
+    Box lb = listBox();
+    if (recs == null) {
+      lb.add(empty("Reading recordings…", Theme::muted));
+    } else if (recs.isEmpty()) {
+      lb.add(
+          empty(
+              "No recordings yet. Connect to a JVM: a recording is saved here when it stops.",
+              Theme::muted));
+    } else {
+      if (err != null) {
+        Box hb = new Box(Box.ROW).pad(8, 14, 8, 14).bg(() -> Theme.alpha(Theme.bad(), 14));
+        hb.ruleBottom = true;
+        hb.getAccessibleContext().setAccessibleName(err);
+        lb.add(hb.add(txt(err, Theme.sans(13, 400), Theme::fg, 20).wrap()));
+      }
+      Box h = new Box(Box.ROW).pad(8, 10, 8, 10).gap(0);
+      h.ruleBottom = true;
+      h.with(
+          cell(null, 28),
+          cell(txt("Started", Theme.sans(12, 500), Theme::muted, 16), 130),
+          grow(cell(txt("Recording", Theme.sans(12, 500), Theme::muted, 16), 0)),
+          cell(txt("Length", Theme.sans(12, 500), Theme::muted, 16).align("right"), 60),
+          cell(null, 10),
+          cell(null, 140));
+      lb.add(h);
+      for (int i = 0; i < recs.size(); i++) {
+        lb.add(recRow(recs.get(i), i < recs.size() - 1));
+      }
+    }
+    jvms.add(lb);
+    foot.with(
+        btn(null, "Open another file…", app::openSnapshot),
+        grow(new Box(Box.ROW)),
+        btn(null, "Cancel", close));
+    Btn go = primary("Open", this::openRecording);
+    go.disabled(recSel == null);
+    foot.add(go);
+    revalidate();
+    repaint();
+  }
+
+  private static final java.time.format.DateTimeFormatter WHEN =
+      java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+  private Btn recRow(Recordings.Entry e, boolean rule) {
+    boolean on = e == recSel;
+    Snapshot.Target t = e.target();
+    String when =
+        WHEN.format(
+            java.time.Instant.ofEpochMilli(e.startMs()).atZone(java.time.ZoneId.systemDefault()));
+    String cls = t.name.substring(t.name.lastIndexOf('.') + 1);
+    String where = t.via != null ? Targets.label(t.via) : "this computer";
+    Btn r = new Btn(() -> selectRecording(e), cls + ", " + when);
+    r.pad(4, 10, 4, 10);
+    r.ruleBottom = rule;
+    r.bg = on ? Theme::accentSoft : null;
+    r.hoverBg = on ? Theme::accentSoft : Theme::sunken;
+    r.setToolTipText(t.name + " · " + where + " · " + e.file());
+    Font f = Theme.sans(13, 400);
+    Box what =
+        new Box(Box.ROW)
+            .gap(4)
+            .with(
+                txt(cls, Theme.sans(13, 500), Theme::fg, 16),
+                grow(
+                    txt("pid " + t.pid + " · " + where, Theme.sans(12, 400), Theme::muted, 16)
+                        .ellipsis()));
+    Box status = new Box(Box.ROW);
+    if (e.part()) {
+      Box b = App.badge("Ended unexpectedly", () -> Theme.alpha(Theme.waitC(), 20), Theme::fg);
+      b.setToolTipText(
+          "The JVM or the connection went away. The JFR file holds what was written until then"
+              + " (.jfr.part)");
+      status.add(b);
+    }
+    r.with(
+        cell(radio(on), 28),
+        cell(txt(when, Theme.num(f), Theme::fg, 16), 130),
+        grow(cell(what, 0)),
+        cell(txt(Fmt.fmtClock(e.sec()), Theme.num(f), Theme::fg, 16).align("right"), 60),
+        cell(null, 10),
+        cell(status, 140));
+    r.addMouseListener(
+        new java.awt.event.MouseAdapter() {
+          @Override
+          public void mouseClicked(java.awt.event.MouseEvent ev) {
+            if (ev.getClickCount() == 2) {
+              openRecording();
+            }
+          }
+        });
+    return r;
   }
 
   private Btn navBtn(String icon, String label, boolean current, Runnable action) {

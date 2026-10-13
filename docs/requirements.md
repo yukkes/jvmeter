@@ -34,8 +34,8 @@ with every field of the format. The sample is a fixed snapshot (the prototype si
 | R1 | Start / Stop recording | protocol: start / stop | Done | Connecting starts one; Start again begins a new recording |
 | R2 | Per-second tick (CPU, heap, GC, threads) while recording | protocol: one JSON line per second | Done | `Session.apply` |
 | R3 | Snapshot sent to the GUI and saved where the GUI runs | protocol | Done | The GUI builds the session from the messages; saving it is R4 |
-| R4 | Save the current session as a snapshot from the GUI | `SnapshotWriter.write` | Done | Save in the top bar (prototype: downloads the raw JSON) |
-| R5 | Open a snapshot (`.json.gz` / `.json`), errors shown | `Snapshot.read` | Done | |
+| R4 | Save the current session as a snapshot from the GUI | `Recordings.save` | Done | Saved when the recording ends (stopped, the JVM or the connection gone, another session opened, the window closed) to `~/.jvmeter/recordings` (Windows: `%LOCALAPPDATA%\jvmeter\recordings`); the Start Center's Recordings lists them |
+| R5 | Open a snapshot (`.json`), errors shown | `Snapshot.read` | Done | |
 | R6 | Snapshot starts with `about` and `summary` | `SnapshotWriter` | Done | |
 | R7 | Sample data | `Snapshot.sample` | Done | |
 | R8 | `startedAt` for times of day on the charts | | Done | |

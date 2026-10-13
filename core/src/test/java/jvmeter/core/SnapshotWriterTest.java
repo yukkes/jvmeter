@@ -52,12 +52,13 @@ class SnapshotWriterTest {
                 .noneMatch(p -> p.title.equals("Metaspace is nearly full")));
   }
 
+  /** a recording is plain JSON: readable as it is, about and summary first */
   @Test
-  void gzipFileRoundTrip(@TempDir Path dir) throws IOException {
+  void plainFileRoundTrip(@TempDir Path dir) throws IOException {
     Session s = new Session(Snapshot.loadSample());
-    Path f = dir.resolve("s.json.gz");
+    Path f = dir.resolve("s.json");
     SnapshotWriter.write(s, f);
-    assertEquals(0x1f, Files.readAllBytes(f)[0] & 0xff);
+    assertTrue(Files.readString(f).startsWith("{\n  \"format\""));
     assertEquals(s.gc.events.size(), new Session(Snapshot.read(f)).gc.events.size());
   }
 
@@ -67,13 +68,8 @@ class SnapshotWriterTest {
     Path plain = dir.resolve("s.json");
     Files.writeString(plain, SnapshotWriter.write(s));
     assertEquals(s.tree.root.total, new Session(Snapshot.read(plain)).tree.root.total);
-    // a cut .gz cannot be read: IOException, as from a missing file
-    Path gz = dir.resolve("s.json.gz");
-    SnapshotWriter.write(s, gz);
-    byte[] b = Files.readAllBytes(gz);
-    Path cut = Files.write(dir.resolve("cut.json.gz"), java.util.Arrays.copyOf(b, b.length / 2));
-    assertThrows(IOException.class, () -> Snapshot.read(cut));
-    assertThrows(IOException.class, () -> Snapshot.read(dir.resolve("missing.json.gz")));
+    // a missing file: IOException
+    assertThrows(IOException.class, () -> Snapshot.read(dir.resolve("missing.json")));
     // not a snapshot: IllegalArgumentException
     for (String bad : new String[] {"", "garbage", "{}"}) {
       Path f = Files.writeString(dir.resolve("bad.json"), bad);

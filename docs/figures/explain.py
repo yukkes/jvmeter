@@ -141,7 +141,7 @@ def overview(f):
     # the snapshot
     f.rect(716, 84, 228, 300, "box", 8)
     f.text(732, 112, L("スナップショット", "Snapshot"), "h")
-    f.text(732, 132, "jvmeter-PID.json.gz", "code")
+    f.text(732, 132, "jvmeter-PID.json", "code")
     f.rect(732, 148, 196, 118, "inner")
     f.rect(736, 168, 188, 40, "hl", 3)
     for y, s, x in [(164, "{", 744), (184, '"about": [ … ],', 752), (202, '"summary": { … },', 752),
@@ -271,7 +271,7 @@ def snapshot(f):
             L("LLM に先頭の 80 行を渡すだけで、生データを読ませなくてもボトルネックを特定できます。",
               "The first 80 lines are enough to find the bottleneck, without the raw data.")])
     f.rect(16, 100, 600, 380, "box", 8)
-    f.text(32, 128, "jvmeter-PID.json.gz", "code")
+    f.text(32, 128, "jvmeter-PID.json", "code")
     f.rect(32, 140, 568, 324, "inner")
     f.rect(36, 191, 400, 22, "hl", 3)
     f.rect(36, 215, 400, 152, "hl", 3)
@@ -296,7 +296,7 @@ def snapshot(f):
     f.rect(656, 100, 288, 380, "box", 8)
     f.text(672, 128, L("LLM に渡す", "Hand it to an LLM"), "h")
     f.rect(672, 140, 256, 30, "term", 4)
-    f.text(682, 160, "zcat jvmeter-*.json.gz | head -80", "termtext")
+    f.text(682, 160, "head -80 jvmeter-*.json", "termtext")
     f.text(672, 196, L("先頭の 80 行でわかること", "What the first 80 lines tell"), "label")
     found = [("bad", "Threads waited 38 s for", "OrderCache@3c4d in OrderCache.put"),
              ("bad", "Heap after GC keeps growing", "+22.1 MB/min. Possible leak"),
@@ -311,9 +311,9 @@ def snapshot(f):
     f.text(672, 458, L("GUI の「見るべき場所」と同じ内容", "The same lines as Where to look"), "what")
     return f.svg(496, L("LLM がそのまま読めるスナップショット", "A snapshot an LLM can read"),
                  L("スナップショットは about（フィールドと単位の意味）と summary（ホットスポット、GC、スレッド、メモリ、検出した問題）で始まり、"
-                   "生データが後に続く。zcat で先頭 80 行を LLM に渡すと、ロック待ち、ヒープの増加、I/O 待ち、CPU を使うメソッドがわかる。",
+                   "生データが後に続く。先頭 80 行を LLM に渡すと、ロック待ち、ヒープの増加、I/O 待ち、CPU を使うメソッドがわかる。",
                    "A snapshot starts with about (what fields and units mean) and summary (hot spots, GC, threads, memory, findings), "
-                   "followed by the raw data. The first 80 lines, from zcat, tell an LLM about lock waits, a growing heap, I/O waits "
+                   "followed by the raw data. The first 80 lines tell an LLM about lock waits, a growing heap, I/O waits "
                    "and the method using the most CPU."))
 
 

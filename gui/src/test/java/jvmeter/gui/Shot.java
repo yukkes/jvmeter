@@ -11,7 +11,7 @@ import jvmeter.core.Snapshot;
 
 /**
  * Renders the GUI in every state to PNGs, for comparison with screenshots of demo/prototype.html:
- * java ... jvmeter.gui.Shot outdir WxH,WxH... [snapshot.json.gz] writes
+ * java ... jvmeter.gui.Shot outdir WxH,WxH... [snapshot.json] writes
  * outdir/WxH/gui-<state>-<theme>.png and the strings it drew (.txt). Runs headless: lays the
  * components out without a window and paints them into an image.
  */

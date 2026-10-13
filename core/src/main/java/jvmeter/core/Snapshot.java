@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
-import java.util.zip.GZIPInputStream;
 
 /**
  * A snapshot in the JSON format of docs/views.md. Fields mirror the JSON, so generated adapters
@@ -240,28 +239,27 @@ public final class Snapshot {
     }
   }
 
-  /**
-   * Reads a snapshot file: gzip-compressed JSON (.json.gz, as written by jvmeter) or plain JSON.
-   */
+  /** Reads a snapshot file (.json). */
   public static Snapshot read(Path file) throws IOException {
     // streamed into the parser: no copy of the whole JSON as bytes and again as a String
-    try (InputStream in = new BufferedInputStream(Files.newInputStream(file), 1 << 16)) {
-      in.mark(2);
-      boolean gz = in.read() == 0x1f && in.read() == 0x8b;
-      in.reset();
-      InputStream json = gz ? new GZIPInputStream(in, 1 << 16) : in;
+    try (InputStream json = open(file)) {
       try {
         return checked(() -> JSONB.type(Snapshot.class).fromJson(json));
       } catch (IllegalArgumentException e) {
         if (e.getCause() instanceof JsonIoException io && io.getCause() instanceof IOException c) {
-          throw c; // a file that cannot be read (or a broken .gz) stays an IOException
+          throw c; // a file that cannot be read stays an IOException
         }
         throw e;
       }
     }
   }
 
-  private static final Jsonb JSONB = Jsonb.builder().build();
+  /** the JSON of a snapshot file */
+  static InputStream open(Path file) throws IOException {
+    return new BufferedInputStream(Files.newInputStream(file), 1 << 16);
+  }
+
+  static final Jsonb JSONB = Jsonb.builder().build();
 
   /**
    * @throws IllegalArgumentException when the JSON is invalid or required fields are missing

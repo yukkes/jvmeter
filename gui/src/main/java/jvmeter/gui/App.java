@@ -10,7 +10,6 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -35,9 +34,9 @@ import jvmeter.core.CallTree;
 import jvmeter.core.Connector;
 import jvmeter.core.Fmt;
 import jvmeter.core.Live;
+import jvmeter.core.Recordings;
 import jvmeter.core.Session;
 import jvmeter.core.Snapshot;
-import jvmeter.core.SnapshotWriter;
 import jvmeter.core.Targets;
 
 /** The window content: top bar, left rail, and the current view. Mirrors demo/prototype.html. */
@@ -119,6 +118,18 @@ final class App extends JComponent {
   private Live.Message hello;
   private Snapshot.Via liveVia;
 
+  /** where recordings are saved (tests use their own) */
+  Path recordingsDir = Recordings.dir();
+
+  /** the live session whose recording is not saved yet: it is saved when its recording ends */
+  private Session toSave;
+
+  /** the recording just saved, shown at the bottom until closed or a new session opens */
+  Path saved;
+
+  /** .saved: one line at the bottom after a recording stops */
+  private final Box savedBar = new Box(Box.ROW).pad(6, 6, 6, 12).gap(10).bg(Theme::fg).radius(10);
+
   App(Snapshot snapshot) {
     setLayout(null);
     top = new Box(Box.ROW).pad(8, 16, 8, 16).gap(6).bg(Theme::surface);
@@ -158,6 +169,7 @@ final class App extends JComponent {
     pickGlass.addMouseMotionListener(ma);
     pickGlass.setToolTipText("Click to cancel");
     add(pickGlass);
+    add(savedBar); // above the view
     add(top);
     add(rail);
     add(scroll);
@@ -238,14 +250,15 @@ final class App extends JComponent {
     CallTree.expandHotPath(s.tree.root, state.expanded, 3);
     state.picking = null;
     state.recording = false;
+    saved = null;
     render();
   }
 
   void openSnapshot() {
-    JFileChooser fc = new JFileChooser();
-    fc.setDialogTitle("Open a snapshot");
-    fc.setFileFilter(
-        new FileNameExtensionFilter("jvmeter snapshot (.json.gz, .json)", "gz", "json"));
+    JFileChooser fc =
+        new JFileChooser(Files.isDirectory(recordingsDir) ? recordingsDir.toFile() : null);
+    fc.setDialogTitle("Open a recording");
+    fc.setFileFilter(new FileNameExtensionFilter("jvmeter snapshot (.json)", "json"));
     if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
       return;
     }
@@ -260,39 +273,40 @@ final class App extends JComponent {
     }
   }
 
-  /** the session as a snapshot file: gzip-compressed JSON, about and summary first */
-  void saveSnapshot() {
-    if (s == null) {
-      return;
-    }
-    JFileChooser fc = new JFileChooser();
-    fc.setDialogTitle("Save the snapshot");
-    fc.setSelectedFile(new File("jvmeter-" + s.snap.target.pid + ".json.gz"));
-    if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    Path f = fc.getSelectedFile().toPath();
-    if (!f.getFileName().toString().endsWith(".gz")) {
-      f = f.resolveSibling(f.getFileName() + ".json.gz");
-    }
-    if (Files.exists(f)
-        && JOptionPane.showConfirmDialog(
-                this,
-                f.getFileName() + " exists. Replace it?",
-                "jvmeter",
-                JOptionPane.OK_CANCEL_OPTION)
-            != JOptionPane.OK_OPTION) {
+  /**
+   * Saves the recording that ended (stopped, its JVM or the connection gone, or another session
+   * opened) in the recordings directory; a failure is shown, never dropped
+   */
+  private void saveRecording() {
+    Session x = toSave;
+    toSave = null;
+    if (x == null) {
       return;
     }
     try {
-      SnapshotWriter.write(s, f);
+      saved = Recordings.save(x, recordingsDir);
     } catch (IOException | RuntimeException e) {
-      JOptionPane.showMessageDialog(
-          this,
-          "Could not save the snapshot: " + e.getMessage(),
-          "jvmeter",
-          JOptionPane.ERROR_MESSAGE);
+      error("Could not save the recording in " + recordingsDir + ": " + e.getMessage());
     }
+  }
+
+  /** opens the recordings directory in the file manager */
+  void showFolder() {
+    Path d = recordingsDir;
+    Thread t =
+        new Thread(
+            () -> {
+              try {
+                Recordings.create(d);
+                java.awt.Desktop.getDesktop().open(d.toFile());
+              } catch (IOException | RuntimeException e) {
+                SwingUtilities.invokeLater(
+                    () -> error("Could not open " + d + " in a file manager: " + e.getMessage()));
+              }
+            },
+            "jvmeter-folder");
+    t.setDaemon(true);
+    t.start();
   }
 
   /** starts a session on the Overview, closing the Start Center if it is open */
@@ -417,7 +431,10 @@ final class App extends JComponent {
     switch (m.type) {
       case "error" -> error(m.message);
       case "end" -> {
-        state.recording = false;
+        // the last data has come; unless a new recording started meanwhile
+        if (!state.recording) {
+          saveRecording();
+        }
         render();
       }
       default -> {
@@ -436,12 +453,14 @@ final class App extends JComponent {
 
   /** a new recording: an empty session, and the agent starts recording */
   private void startLive() {
+    saveRecording(); // the previous one, if its end has not come yet
     Session x = Session.live(hello);
     x.snap.target.via = liveVia;
     if (liveInclude != null) {
       x.snap.target.include = liveInclude; // the packages the agent counts from now on
     }
     show(x);
+    toSave = x;
     live.send(new Live.Command("start", liveInclude));
     state.recording = true;
     render();
@@ -460,15 +479,27 @@ final class App extends JComponent {
     } else if (from == live) {
       live = null;
       state.recording = false;
+      boolean kept = toSave != null;
+      saveRecording();
       render();
       if (why != null) {
-        error(why);
+        error(
+            kept && saved != null
+                ? why
+                    + " What was recorded until then is saved in "
+                    + Recordings.label(recordingsDir)
+                    + "."
+                : why);
       }
     }
   }
 
-  /** ends the connection to a JVM: its agent stops recording and takes the counters out */
+  /**
+   * ends the connection to a JVM (another session opens, or the window closes): its recording is
+   * saved, and its agent stops recording and takes the counters out
+   */
   void disconnect() {
+    saveRecording();
     if (live != null) {
       live.close();
       live = null;
@@ -476,7 +507,7 @@ final class App extends JComponent {
   }
 
   /** message may come from the profiled JVM: shown as it is, never as HTML */
-  private void error(String message) {
+  void error(String message) {
     if (!java.awt.GraphicsEnvironment.isHeadless()) {
       javax.swing.JLabel text = new javax.swing.JLabel();
       text.putClientProperty("html.disable", Boolean.TRUE);
@@ -489,6 +520,11 @@ final class App extends JComponent {
 
   /** the Start Center (like JProfiler's): shown at startup and from the target in the top bar */
   void openStart() {
+    openStart(null);
+  }
+
+  /** the Start Center on a section (null: where it left off) */
+  void openStart(String kind) {
     if (java.awt.GraphicsEnvironment.isHeadless() || startDialog != null) {
       return; // the tests drive StartCenter directly
     }
@@ -497,7 +533,7 @@ final class App extends JComponent {
             SwingUtilities.getWindowAncestor(this),
             "Start Center",
             java.awt.Dialog.ModalityType.APPLICATION_MODAL);
-    StartCenter sc = new StartCenter(this, startDialog::dispose);
+    StartCenter sc = new StartCenter(this, startDialog::dispose, kind);
     startDialog.setContentPane(sc);
     startDialog
         .getRootPane()
@@ -685,7 +721,10 @@ final class App extends JComponent {
     } else {
       rec.with(icFill("fiber_manual_record", 18, Theme::rec), clock);
     }
-    rec.setToolTipText(recOn ? "Stop recording" : "Start recording");
+    rec.setToolTipText(
+        recOn
+            ? "Stop recording (saved to " + Recordings.label(recordingsDir) + ")"
+            : "Start recording");
     rec.disabled(s == null);
     Box vsep =
         new Box(Box.ROW)
@@ -698,15 +737,13 @@ final class App extends JComponent {
                       g.setColor(Theme.line());
                       g.fillRect(0, 0, 1, 20);
                     }));
-    Btn open = ghostIcon("folder_open", "Open snapshot", this::openSnapshot);
-    open.setToolTipText("Open a snapshot (.json.gz)");
-    Btn save = ghostIcon("download", "Save snapshot", this::saveSnapshot);
-    save.setToolTipText("Save the snapshot (.json.gz)");
-    save.disabled(s == null);
+    Btn recordings = ghostIcon("folder_open", "Open a recording", this::openSnapshot);
+    recordings.setToolTipText("Open a recording (" + Recordings.label(recordingsDir) + ")");
     String themeTip = Theme.dark ? "Switch to light mode" : "Switch to dark mode";
     Btn theme = ghostIcon(Theme.dark ? "light_mode" : "dark_mode", themeTip, this::toggleTheme);
     theme.setToolTipText(themeTip);
-    top.with(rec, vsep, open, save, theme);
+    top.with(rec, vsep, recordings, theme);
+    renderSaved();
 
     rail.removeAll();
     String[][] views = {
@@ -776,6 +813,38 @@ final class App extends JComponent {
 
   private String shownKey;
 
+  /** .saved: where the recording was saved, and the folder; it stays until closed */
+  private void renderSaved() {
+    savedBar.removeAll();
+    savedBar.setVisible(saved != null);
+    if (saved == null) {
+      return;
+    }
+    String what = "Recording saved to " + Recordings.label(recordingsDir);
+    savedBar.getAccessibleContext().setAccessibleName(what);
+    savedBar.setToolTipText(saved.toString());
+    Btn show = new Btn(this::showFolder, "Show in folder");
+    show.pad(4, 10, 4, 10).radius(8);
+    show.hoverBg = () -> Theme.alpha(Theme.surface(), 14);
+    show.add(txt("Show in folder", Theme.sans(13, 700), Theme::surface, 20));
+    Btn close =
+        new Btn(
+            () -> {
+              saved = null;
+              render();
+            },
+            "Close");
+    close.pad(4, 4, 4, 4).radius(8);
+    close.hoverBg = show.hoverBg;
+    close.setToolTipText("Close");
+    close.add(ic("close", 20, Theme::surface));
+    savedBar.with(
+        icFill("check_circle", 18, Theme::good),
+        grow(txt(what, Theme.sans(13, 400), Theme::surface, 20).ellipsis()),
+        show,
+        close);
+  }
+
   /** .badge: a small pill */
   static Box badge(
       String label,
@@ -818,13 +887,13 @@ final class App extends JComponent {
     p.add(
         txt(
                 "Choose a JVM on this computer, on an SSH host or in a Kubernetes pod in the Start"
-                    + " Center, or open a snapshot.",
+                    + " Center, or open a recording.",
                 Theme.sans(12, 400),
                 Theme::muted,
                 18)
             .wrap()
             .align("center"));
-    Btn openB = btn("folder_open", "Open snapshot", this::openSnapshot);
+    Btn openB = btn("folder_open", "Recordings", () -> openStart("recordings"));
     Btn sample = btn("science", "Sample data", () -> open(Snapshot.loadSample()));
     Box row =
         new Box(Box.ROW)
@@ -935,6 +1004,11 @@ final class App extends JComponent {
     top.setBounds(0, 0, w, th);
     rail.setBounds(0, th, 72, h - th);
     scroll.setBounds(72, th, w - 72, h - th);
+    if (savedBar.isVisible()) {
+      // .saved: centered, 20px above the bottom, at most the window less 16px either side
+      int bw = Math.min(savedBar.getPreferredSize().width, w - 32), bh = savedBar.heightFor(bw);
+      savedBar.setBounds((w - bw) / 2, h - 20 - bh, bw, bh);
+    }
   }
 
   @Override

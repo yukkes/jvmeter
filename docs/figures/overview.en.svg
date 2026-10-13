@@ -78,7 +78,7 @@
 <line class="arrow" x1="640" y1="240" x2="710" y2="240" marker-end="url(#a)"/>
 <rect class="box" x="716" y="84" width="228" height="300" rx="8"/>
 <text class="h" x="732" y="112">Snapshot</text>
-<text class="code" x="732" y="132">jvmeter-PID.json.gz</text>
+<text class="code" x="732" y="132">jvmeter-PID.json</text>
 <rect class="inner" x="732" y="148" width="196" height="118" rx="6"/>
 <rect class="hl" x="736" y="168" width="188" height="40" rx="3"/>
 <text class="code" x="744" y="164">{</text>

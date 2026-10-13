@@ -67,7 +67,7 @@
 ![動いている JVM に、どこからでもアタッチ](docs/figures/attach.ja.svg)
 
 ### 3. LLM がそのまま読める軽量スナップショット
-プロファイル結果は Gzip 圧縮された JSON（`.json.gz`）として出力されます。先頭部分に環境情報（`about`）と重要指標（`summary`）が集約されているため、LLM にスナップショットの先頭を渡すだけで的確なボトルネック診断を受けられます。
+プロファイル結果はそのままエディタで読める JSON（`.json`）として出力されます。先頭部分に環境情報（`about`）と重要指標（`summary`）が集約されているため、LLM にスナップショットの先頭を渡すだけで的確なボトルネック診断を受けられます。
 
 ![LLM がそのまま読めるスナップショット](docs/figures/snapshot.ja.svg)
 
@@ -91,7 +91,7 @@
 2. **Local** / **SSH** / **Kubernetes** の中から接続先を選択すると、検出された JVM プロセスの一覧が表示されます。
 3. 対象の JVM を選び、**Count calls in** に呼び出しを正確にカウントしたいパッケージ名（例: `com.example`）を入力します。
 4. **Attach and connect** をクリックするとプロファイリングが開始され、画面が 1 秒ごとに更新されます。
-5. 上部バーの **Save**（ダウンロードのアイコン）でスナップショットを保存できます。
+5. 記録を止めると `~/.jvmeter/recordings`（Windows では `%LOCALAPPDATA%\jvmeter\recordings`）に自動で保存されます（JVM や接続が途切れたときも保存されます）。保存した記録は Start Center の **Recordings** に一覧されます。
 
 > **Tips:** 画面構成や見え方を手元ですぐ試したい場合は、Start Center の **Sample data**（架空の注文サービスのサンプルプロファイル）を開いてください。
 
@@ -108,16 +108,17 @@ java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
   -cp jvmeter-demo.jar app.Mix
 ```
 
-プロセス終了時に自動で `jvmeter-<PID>.json.gz` が生成されます。また、記録の実行中に GUI から接続してリアルタイム監視することも可能です。
+プロセス終了時に自動で `jvmeter-<PID>.json` が生成されます（本人だけが読める権限）。また、記録の実行中に GUI から接続してリアルタイム監視することも可能です。
 
 #### スナップショットの確認と LLM 連携
 
 ```bash
 # GUI でスナップショットを開く（上部バーのフォルダーのアイコンからも開けます）
-jvmeter/bin/jvmeter jvmeter-12345.json.gz
+jvmeter/bin/jvmeter jvmeter-12345.json
 
 # 先頭 80 行（about / summary）を抽出して確認（この部分を LLM に渡して分析）
-zcat jvmeter-12345.json.gz | head -80
+head -80 jvmeter-12345.json
+# Windows PowerShell: Get-Content jvmeter-12345.json -TotalCount 80
 ```
 
 ---
@@ -179,7 +180,7 @@ GUI 上では、目的別に以下のビューが提供されています。
 |---|---|---|
 | `-javaagent:jvmeter-agent.jar=include=<pkg>`<br>`-Djvmeter.include=<pkg>` | 呼び出し回数を計測するパッケージのカンマ区切り指定。<br>※ CPU 時間のサンプリングはパッケージ指定に関わらず全メソッドが対象です。 | main クラスが属するパッケージ |
 | `-Djvmeter.period=<ms>` | サンプリング周期（ミリ秒）。スレッド数が多く高負荷な環境を長時間記録する場合に引き上げます。 | `1` |
-| `-Djvmeter.out=<path>` | JVM 終了時に書き出すスナップショットファイルの保存先パス。 | `jvmeter-<PID>.json.gz` |
+| `-Djvmeter.out=<path>` | JVM 終了時に書き出すスナップショットファイルの保存先パス。 | `jvmeter-<PID>.json` |
 | `-javaagent:jvmeter-agent.jar=port=<port>` | GUI からの接続を受け付けるポート番号（`127.0.0.1` および `::1` のみでリッスン）。 | ランダムな空きポート |
 
 ### エージェント JAR による CLI 操作

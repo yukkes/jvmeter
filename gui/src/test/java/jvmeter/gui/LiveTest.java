@@ -185,6 +185,8 @@ class LiveTest {
     }
   }
 
+  @org.junit.jupiter.api.io.TempDir Path recordings;
+
   void record(String sshHost) throws Exception {
     App[] a = new App[1];
     StartCenter[] sc = new StartCenter[1];
@@ -195,6 +197,7 @@ class LiveTest {
           () -> {
             App.applyLaf();
             a[0] = new App(null);
+            a[0].recordingsDir = recordings;
             prefs.remove("last");
             sc[0] = new StartCenter(a[0], () -> {});
             if (sshHost != null) {
@@ -262,12 +265,24 @@ class LiveTest {
           () -> {
             AppTest.paint(a[0]);
             assertTrue(a[0].s.classes.stream().anyMatch(c -> c.name.equals("byte[]")));
-            a[0].toggleRecording(); // stop: the last data follows
+            a[0].toggleRecording(); // stop: the last data follows, then it is saved
             assertFalse(a[0].state.recording);
-            // what the GUI would save: the live session as a snapshot
-            Snapshot back = Snapshot.parse(jvmeter.core.SnapshotWriter.write(a[0].s));
-            assertEquals(child.pid(), back.target.pid);
-            assertNotNull(back.telemetry);
+          });
+      await("the recording saved", () -> a[0].saved != null);
+      AppTest.onEdt(
+          () -> {
+            try {
+              Snapshot back = Snapshot.read(a[0].saved);
+              assertEquals(child.pid(), back.target.pid);
+              assertNotNull(back.telemetry);
+              assertEquals(
+                  java.util.List.of(a[0].saved),
+                  jvmeter.core.Recordings.list(recordings).stream()
+                      .map(jvmeter.core.Recordings.Entry::file)
+                      .toList());
+            } catch (java.io.IOException e) {
+              throw new java.io.UncheckedIOException(e);
+            }
             a[0].disconnect();
           });
     } finally {
