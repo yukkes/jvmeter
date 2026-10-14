@@ -156,6 +156,8 @@ public final class Recordings {
         }
       }
       try {
+        // a backoff between at most five tries, not a wait for a state
+        //noinspection BusyWait
         Thread.sleep(100L * i);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
