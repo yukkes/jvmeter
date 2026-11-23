@@ -1003,8 +1003,10 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).
 // "Where to look": the bottlenecks found in the data already recorded, most severe first (core Findings is the Java port).
 // A finding: { sev: bad | warn | info | ok, icon, line: [[kind, text]] (t text, m method or class, b bold, n bold number), small, link }
 function ownCode(include) {
-  const p = (include || "").split(",").map(x => x.trim()).filter(x => x).map(x => x.endsWith(".") || /[A-Z]/.test(x[x.lastIndexOf(".") + 1]) ? x : x + ".");
-  return p.length ? n => p.some(x => n.startsWith(x)) : n => !/^(java|javax|jdk|sun|com\.sun)\./.test(n);
+  const tokens = (include || "").split(",").map(x => x.trim()).filter(x => x);
+  if (!tokens.length || tokens.includes("*")) return n => !/^(java|javax|jdk|sun|com\.sun)\./.test(n);
+  const p = tokens.map(x => x.endsWith(".") || /[A-Z]/.test(x[x.lastIndexOf(".") + 1]) ? x : x + ".");
+  return n => p.some(x => n.startsWith(x));
 }
 const RANK = ["bad", "warn", "info", "ok"];
 const secText = s => Math.round(s * 10) / 10 + " s";

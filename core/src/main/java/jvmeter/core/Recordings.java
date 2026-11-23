@@ -102,7 +102,14 @@ public final class Recordings {
     void move(Path from, Path to) throws IOException;
   }
 
-  private static final Move ATOMIC = (a, b) -> Files.move(a, b, StandardCopyOption.ATOMIC_MOVE);
+  private static final Move ATOMIC =
+      (a, b) -> {
+        try {
+          Files.move(a, b, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException fallback) {
+          Files.move(a, b, StandardCopyOption.REPLACE_EXISTING);
+        }
+      };
 
   static Path save(Session s, Path dir, Move move) throws IOException {
     create(dir);

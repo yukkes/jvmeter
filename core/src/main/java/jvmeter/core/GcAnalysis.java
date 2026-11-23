@@ -91,7 +91,7 @@ public final class GcAnalysis {
     }
     a.totalPause = totalPause;
     a.dur = Math.max(Math.max(durSec, ev.get(n - 1).t), 1);
-    a.throughput = 100 - totalPause / (a.dur * 1000) * 100;
+    a.throughput = Math.max(0, 100 - totalPause / (a.dur * 1000) * 100);
     a.max = pauses[n - 1];
     a.avg = totalPause / n;
     a.p95 = pauses[Math.min(n - 1, (int) Math.floor(0.95 * n))];
@@ -184,6 +184,7 @@ public final class GcAnalysis {
         default -> {}
       }
     }
+    a.peakYoung = Math.max(0, a.peakYoung);
     a.full = a.fulls.size();
     a.rules(g);
     return a;
@@ -205,7 +206,7 @@ public final class GcAnalysis {
   /** problem detection (rules in docs/gc-analysis.md), most severe first */
   private void rules(GcData g) {
     double growth = slopePerMin * dur / 60;
-    if (slopePerMin > 0 && growth >= g.heapMaxMB * 0.03) {
+    if (g.heapMaxMB > 0 && slopePerMin > 0 && growth >= g.heapMaxMB * 0.03) {
       Problem p =
           new Problem(
               "bad",
@@ -249,7 +250,7 @@ public final class GcAnalysis {
         late++;
       }
     }
-    if (late >= 3 && low >= 0.8 * g.heapMaxMB) {
+    if (g.heapMaxMB > 0 && late >= 3 && low >= 0.8 * g.heapMaxMB) {
       problems.add(
           new Problem(
                   "bad",

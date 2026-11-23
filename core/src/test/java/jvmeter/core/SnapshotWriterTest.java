@@ -17,7 +17,9 @@ class SnapshotWriterTest {
     Session s = new Session(Snapshot.loadSample());
     String json = SnapshotWriter.write(s);
     assertTrue(json.startsWith("{\n  \"format\": \"jvmeter-snapshot/1\""), json.substring(0, 60));
-    assertTrue(json.contains("\"findings\""));
+    String head80 = json.lines().limit(80).collect(java.util.stream.Collectors.joining("\n"));
+    assertTrue(head80.contains("\"findings\""));
+    assertTrue(head80.contains("GC:"), head80);
     Session back = new Session(Snapshot.parse(json));
     assertEquals(s.tree.root.total, back.tree.root.total);
     assertEquals(s.gc.events.size(), back.gc.events.size());
@@ -75,5 +77,56 @@ class SnapshotWriterTest {
       Path f = Files.writeString(dir.resolve("bad.json"), bad);
       assertThrows(IllegalArgumentException.class, () -> Snapshot.read(f), bad);
     }
+  }
+
+  @Test
+  void aboutReflectsConfiguredSamplingPeriod() {
+    Snapshot snap = Snapshot.loadSample();
+    snap.cpu.periodMs = 5L;
+    String json = SnapshotWriter.write(new Session(snap));
+    assertTrue(json.contains("taken every 5 ms"));
+  }
+
+  @Test
+  void rejectsMalformedNestedStructuresAndClampsGcMetrics() {
+    String base =
+        "{\"target\":{\"name\":\"a\"},\"cpu\":{\"tree\":{\"name\":\"All\"}},\"memory\":{\"classes\":[]}";
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> Snapshot.parse(base + ",\"threads\":[{\"name\":\"t\",\"segs\":[[1]]}]}"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            Snapshot.parse(
+                base
+                    + ",\"telemetry\":{\"t\":[1,2],\"n\":[1],\"cpu\":[0],\"heap\":[0],\"threads\":[0]}}"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> Snapshot.parse(base + ",\"gc\":{\"events\":[{\"t\":1}]}}"));
+
+    GcData g = new GcData("G1", 0, null);
+    GcEvent e = new GcEvent();
+    e.t = 1;
+    e.name = "Young";
+    e.cause = "G1 Evacuation Pause";
+    e.pauseMs = 5000;
+    e.beforeMB = 10;
+    e.afterMB = 5;
+    e.oldAfterMB = 20.0;
+    g.events.add(e);
+    GcAnalysis a = GcAnalysis.of(g, 1);
+    assertEquals(0.0, a.throughput);
+    assertEquals(0.0, a.peakYoung);
+    assertTrue(a.problems.stream().noneMatch(p -> p.title.equals(GcAnalysis.HEAP_GROWS)));
+
+    Session s = new Session(Snapshot.loadSample());
+    Session.ClassSnap before =
+        new Session.ClassSnap(
+            0,
+            java.util.Map.of("app.Disappeared", 50L),
+            java.util.Map.of("app.Disappeared", 4000L));
+    assertTrue(
+        s.abRows(before, null).stream()
+            .anyMatch(r -> r.c().name.equals("app.Disappeared") && r.diff() == -50));
   }
 }

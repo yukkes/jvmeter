@@ -80,21 +80,25 @@ public final class Findings {
    * outside the JDK
    */
   public static Predicate<String> own(String include) {
-    List<String> p =
+    List<String> tokens =
         include == null
             ? List.of()
             : Arrays.stream(include.split(","))
                 .map(String::trim)
                 .filter(x -> !x.isEmpty())
-                .map(
-                    x ->
-                        x.endsWith(".") || Character.isUpperCase(x.charAt(x.lastIndexOf('.') + 1))
-                            ? x
-                            : x + ".")
                 .toList();
-    return p.isEmpty()
-        ? n -> !n.matches("(java|javax|jdk|sun|com\\.sun)\\..*")
-        : n -> p.stream().anyMatch(n::startsWith);
+    if (tokens.isEmpty() || tokens.contains("*")) {
+      return n -> !n.matches("(java|javax|jdk|sun|com\\.sun)\\..*");
+    }
+    List<String> p =
+        tokens.stream()
+            .map(
+                x ->
+                    x.endsWith(".") || Character.isUpperCase(x.charAt(x.lastIndexOf('.') + 1))
+                        ? x
+                        : x + ".")
+            .toList();
+    return n -> p.stream().anyMatch(n::startsWith);
   }
 
   /** before / after: the reference points picked on the Memory view (null: none) */
@@ -165,6 +169,9 @@ public final class Findings {
       if (top == null || e.getValue() > mine.get(top)) {
         top = e.getKey();
       }
+    }
+    if (top == null) {
+      return;
     }
     List<Map.Entry<String, Double>> libs =
         new ArrayList<>(lib.getOrDefault(top, Map.of()).entrySet());
@@ -356,7 +363,10 @@ public final class Findings {
           new Finding("bad", "memory")
               .m(best)
               .t(" grew by ")
-              .n("+" + Fmt.fmtInt(z.count().get(best) - a.count().get(best)))
+              .n(
+                  "+"
+                      + Fmt.fmtInt(
+                          z.count().getOrDefault(best, 0L) - a.count().getOrDefault(best, 0L)))
               .t(" instances in " + span(z.t() - a.t()))
               .small(
                   "+"
@@ -424,6 +434,9 @@ public final class Findings {
     for (Snapshot.Allocation a : allocs) {
       bySite.merge(a.site, a.mb, Double::sum);
       total += a.mb;
+    }
+    if (total <= 0) {
+      return;
     }
     String top =
         bySite.entrySet().stream()

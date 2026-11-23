@@ -126,6 +126,9 @@ public final class Snapshot {
 
     /** exact call counts per method (from the agent); tree nodes then carry no counts */
     public List<MethodCalls> methods;
+
+    /** JFR execution sampling interval in ms (absent: 1 ms) */
+    public Long periodMs;
   }
 
   @Json
@@ -279,12 +282,73 @@ public final class Snapshot {
         || s.target == null
         || s.cpu == null
         || s.cpu.tree == null
+        || s.cpu.tree.name == null
         || s.memory == null
         || s.memory.classes == null) {
       throw new IllegalArgumentException("target / cpu.tree / memory.classes are required");
     }
     if (s.threads == null) {
       s.threads = new ArrayList<>();
+    }
+    for (RawThread t : s.threads) {
+      if (t == null || t.name == null) {
+        throw new IllegalArgumentException("threads entries require a name");
+      }
+      if (t.stack == null) {
+        t.stack = new ArrayList<>();
+      }
+      if (t.segs != null) {
+        for (List<Object> g : t.segs) {
+          if (g == null
+              || g.size() < 3
+              || !(g.get(0) instanceof Number)
+              || !(g.get(1) instanceof Number)
+              || g.get(2) == null) {
+            throw new IllegalArgumentException("invalid thread segment");
+          }
+        }
+      }
+    }
+    if (s.memory.history != null) {
+      History h = s.memory.history;
+      if (h.t == null
+          || h.classes == null
+          || h.count == null
+          || h.bytes == null
+          || h.count.size() != h.t.size()
+          || h.bytes.size() != h.t.size()) {
+        throw new IllegalArgumentException("invalid memory.history");
+      }
+      for (int k = 0; k < h.t.size(); k++) {
+        if (h.t.get(k) == null
+            || h.count.get(k) == null
+            || h.bytes.get(k) == null
+            || h.count.get(k).size() != h.classes.size()
+            || h.bytes.get(k).size() != h.classes.size()) {
+          throw new IllegalArgumentException("invalid memory.history row");
+        }
+      }
+    }
+    if (s.telemetry != null) {
+      Telemetry tel = s.telemetry;
+      if (tel.t == null
+          || tel.n == null
+          || tel.cpu == null
+          || tel.heap == null
+          || tel.threads == null
+          || tel.n.size() != tel.t.size()
+          || tel.cpu.size() != tel.t.size()
+          || tel.heap.size() != tel.t.size()
+          || tel.threads.size() != tel.t.size()) {
+        throw new IllegalArgumentException("invalid telemetry arrays");
+      }
+    }
+    if (s.gc != null && s.gc.events != null) {
+      for (GcEvent e : s.gc.events) {
+        if (e == null || e.name == null || e.cause == null) {
+          throw new IllegalArgumentException("gc.events entries require name and cause");
+        }
+      }
     }
     return s;
   }

@@ -43,6 +43,7 @@ public final class AgentClient implements Closeable {
     String first = null;
     IOException last = new IOException("no port");
     for (int port : ports) {
+      s = null;
       try {
         s = connect(port);
         if (handshake(s, token)) {
@@ -88,8 +89,11 @@ public final class AgentClient implements Closeable {
                 }
               } catch (IOException | JsonException e) {
                 why = "The connection to the JVM was lost: " + e.getMessage();
+              } finally {
+                boolean wasClosed = closed;
+                close();
+                onClose.accept(wasClosed ? null : why);
               }
-              onClose.accept(closed ? null : why);
             },
             "jvmeter-agent-client");
     t.setDaemon(true);
