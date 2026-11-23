@@ -12,7 +12,7 @@ The agent, its protocol and the GUI are the same for all three. Only two things 
 
 So the GUI always talks to `127.0.0.1:LOCAL`; a target is just "a command prefix plus a port forward".
 The Start Center of [`demo/prototype.html`](../demo/prototype.html) and the GUI (shown at startup, and from the target in the top bar)
-shows the exact commands for each kind; `jvmeter.core.Targets` builds them and `TargetsTest` checks them against the prototype.
+lists the JVMs for each kind and shows per-JVM attach notes (`jvmeter.core.Targets`, checked against the prototype by `TargetsTest`).
 
 ## Why the user's own `ssh` and `kubectl`
 
@@ -99,7 +99,7 @@ Two JVM options decide how well it works, and neither loads anything, so they ca
 
 The Start Center shows what attaching means for the chosen JVM: `list` reports each JVM's version and options (as `jps -v` does),
 so the note under Attach and connect is only the pause for a prepared JVM, and adds the missing pieces otherwise.
-Its "Prepare a JVM" section shows the options for the command line, or `JDK_JAVA_OPTIONS` in a Deployment.
+Set those options on the command line, or in `JDK_JAVA_OPTIONS` in a Kubernetes Deployment.
 (The JVM counts only command-line options as explicit: given in `JAVA_TOOL_OPTIONS`, `-XX:+EnableDynamicAgentLoading` still allows attaching,
 but JDK 21+ logs the warning anyway. `JDK_JAVA_OPTIONS` is read by the `java` launcher as if typed on the command line.)
 When `DebugNonSafepoints` was off, the top bar shows **Inlined → callers** and the snapshot records it (`target.debugNonSafepoints`),
@@ -134,3 +134,4 @@ JProfiler works the same way with its native JVMTI agent (`-agentpath`, or attac
 - Windows targets over SSH are out of scope for now (`/proc/PID/exe` and `sh` are assumed on remote hosts).
 - One GUI connects to one JVM at a time; several pods of a Deployment are profiled one by one.
 - A remembered pod name goes stale with every rollout: the Start Center then takes a pod of the same Deployment (pod name minus `-hash-suffix`).
+- Virtual threads (JDK 21+): `ThreadMXBean.dumpAllThreads()` reports platform threads only, so virtual threads do not appear in the Threads view or `waits` (their CPU time is still sampled by JFR).

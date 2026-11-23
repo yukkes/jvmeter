@@ -110,7 +110,7 @@ java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
   -cp jvmeter-demo.jar app.Mix
 ```
 
-`jvmeter-<PID>.json` is written when the process exits (readable by your user only). While it records, the GUI can also connect to watch it live.
+`jvmeter-<PID>.json` is written when the process exits (readable by your user only). You can also connect from the GUI while the JVM is running (connecting starts a new GUI recording; disconnecting stops recording and removes the counters).
 
 #### Reading a snapshot and handing it to an LLM
 
@@ -154,7 +154,7 @@ These options do not load the agent, so **put them on every JVM you might profil
   From JDK 21 on, keeps the JVM from logging a warning when an agent is attached later (JEP 451: future JDKs will refuse to attach without it).
 
 > **On Kubernetes:**  
-> Setting these options in the `JDK_JAVA_OPTIONS` environment variable of the pod is the easy way (the Start Center's "Prepare a JVM" shows an example).
+> Setting these options in the `JDK_JAVA_OPTIONS` environment variable of the pod is the easy way.
 
 ---
 

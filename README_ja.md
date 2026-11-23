@@ -108,7 +108,7 @@ java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
   -cp jvmeter-demo.jar app.Mix
 ```
 
-プロセス終了時に自動で `jvmeter-<PID>.json` が生成されます（本人だけが読める権限）。また、記録の実行中に GUI から接続してリアルタイム監視することも可能です。
+プロセス終了時に自動で `jvmeter-<PID>.json` が生成されます（本人だけが読める権限）。また、実行中の JVM に GUI から接続することもできます（接続すると GUI 側で新しい記録が始まり、切断すると記録とカウントが停止します）。
 
 #### スナップショットの確認と LLM 連携
 
@@ -153,7 +153,7 @@ GUI 上では、目的別に以下のビューが提供されています。
   JDK 21 以降において、動的アタッチ時の警告ログ出力を抑制します（JEP 451 により、将来の JDK では指定がないと動的アタッチが拒否される予定です）。
 
 > **Kubernetes での利用:**  
-> Pod のマニフェスト等で環境変数 `JDK_JAVA_OPTIONS` に上記オプションを設定しておくのが便利です（Start Center の「Prepare a JVM」にも設定サンプルが表示されます）。
+> Pod のマニフェスト等で環境変数 `JDK_JAVA_OPTIONS` に上記オプションを設定しておくのが便利です。
 
 ---
 
