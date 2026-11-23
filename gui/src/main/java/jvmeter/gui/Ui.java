@@ -897,6 +897,18 @@ final class Ui {
               }
             }
           });
+      addFocusListener(
+          new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+              repaint();
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+              repaint();
+            }
+          });
       for (String k : new String[] {"ENTER", "SPACE"}) {
         getInputMap().put(KeyStroke.getKeyStroke(k), "press");
       }
@@ -920,6 +932,8 @@ final class Ui {
 
     Btn disabled(boolean off) {
       enabled = !off;
+      setEnabled(!off);
+      setFocusable(!off);
       setCursor(Cursor.getPredefinedCursor(off ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
       return this;
     }
@@ -935,6 +949,15 @@ final class Ui {
         g2.dispose();
       } else {
         super.paint(g);
+        if (isFocusOwner()) {
+          Graphics2D g2 = Theme.hints((Graphics2D) g.create());
+          int arc = Math.min(radius * 2, Math.min(getWidth(), getHeight()));
+          int ia = Math.max(0, arc - 2);
+          g2.setColor(Theme.accent());
+          g2.setStroke(new BasicStroke(2));
+          g2.draw(new RoundRectangle2D.Double(1, 1, getWidth() - 2, getHeight() - 2, ia, ia));
+          g2.dispose();
+        }
       }
     }
   }

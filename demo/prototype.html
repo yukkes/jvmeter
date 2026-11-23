@@ -1518,9 +1518,9 @@ function viewGc() {
     <tr><td><b>Total</b></td><td class="r num"><b>${fmtInt(a.n)}</b></td><td class="r num"><b>${fmtPause(a.totalPause)}</b></td><td class="r num"><b>${fmtPause(a.avg)}</b></td><td class="r num"><b>${fmtPause(a.max)}</b></td></tr>
   </tbody></table></div></section>`;
   // generation sizes
-  const gens = a.gen.youngMB ? [["Young", a.peaks.young, a.gen.youngMB], ["Old", a.peaks.old, a.gen.oldMB], ["Metaspace", a.peaks.meta, a.gen.metaspaceMB]] : [];
+  const gens = a.gen.youngMB || a.gen.oldMB ? [["Young", a.peaks.young, a.gen.youngMB], ["Old", a.peaks.old, a.gen.oldMB], ["Metaspace", a.peaks.meta, a.gen.metaspaceMB]] : [];
   const gensHtml = `<section class="panel"><h2>Generation sizes <span class="note" style="font-weight:400">peak / committed</span></h2><div class="gens">
-    ${gens.length ? gens.map(([name, peak, alloc]) => { const pc = Math.min(100, peak / alloc * 100); return `<div><div class="gen-head"><b>${name}</b><span class="num note">${fmtInt(Math.round(peak))} / ${fmtInt(alloc)} MB · ${pc.toFixed(0)} %</span></div>
+    ${gens.length ? gens.map(([name, peak, alloc]) => { const pc = alloc > 0 ? Math.min(100, peak / alloc * 100) : 0; return `<div><div class="gen-head"><b>${name}</b><span class="num note">${fmtInt(Math.round(peak))} / ${fmtInt(alloc)} MB · ${pc.toFixed(0)} %</span></div>
       <div class="gen-bar"><i class="${pc >= 80 ? "hi" : ""}" style="width:${pc.toFixed(1)}%"></i></div></div>`; }).join("") : `<div class="empty" style="padding:0">No gc.generations</div>`}
   </div></section>`;
   // who allocates: allocation samples by place (the application method nearest to the allocation) and class, the 20 largest
