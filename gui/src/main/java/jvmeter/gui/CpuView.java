@@ -108,7 +108,8 @@ final class CpuView {
           h.name,
           Table.method(h.name, st.q),
           Table.meterNum(h.self / max, Fmt.fmtMs(h.self)),
-          Table.num(Fmt.fixed(h.self / s.tree.root.total * 100, 1) + " %"),
+          Table.num(
+              Fmt.fixed(s.tree.root.total > 0 ? h.self / s.tree.root.total * 100 : 0, 1) + " %"),
           Table.num(Fmt.calls(h.calls)),
           Table.num(Fmt.perCall(h.self, h.calls)));
       if (h.name.equals(st.sel)) {
@@ -313,7 +314,12 @@ final class CpuView {
     /**
      * widths of Total / Self / Calls: the widest content (header button included) + 6, at least 40
      */
+    private double[] cachedColw;
+
     double[] colw() {
+      if (cachedColw != null) {
+        return cachedColw;
+      }
       double[] w = new double[3];
       for (int k = 0; k < 3; k++) {
         boolean on = COLS[k + 1][0].equals(app.state.tsortKey);
@@ -327,6 +333,7 @@ final class CpuView {
           }
         }
       }
+      cachedColw = w;
       return w;
     }
 
@@ -524,7 +531,7 @@ final class CpuView {
       parts.add(new Part(Fmt.shortName(c.name()), c.name(), c.ms(), colors.get(k + 1)));
     }
     double rest = m.total() - parts.stream().mapToDouble(Part::ms).sum();
-    if (rest > m.total() * 0.005) {
+    if (m.callees().size() > 3 && rest > m.total() * 0.005) {
       parts.add(
           new Part((m.callees().size() - 3) + " others", null, rest, colors.get(parts.size())));
     }

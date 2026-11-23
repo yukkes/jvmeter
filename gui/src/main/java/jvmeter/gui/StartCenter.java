@@ -72,7 +72,7 @@ final class StartCenter extends JComponent {
     List<String> hosts = new ArrayList<>();
 
     /** the packages counted per main class */
-    java.util.Map<String, String> include = new java.util.HashMap<>();
+    java.util.Map<String, String> include = new java.util.LinkedHashMap<>();
   }
 
   private final App app;
@@ -208,7 +208,7 @@ final class StartCenter extends JComponent {
     try {
       Last l = LAST.fromJson(app.prefs.get("last", "{}"));
       if (l != null && l.include == null) {
-        l.include = new java.util.HashMap<>();
+        l.include = new java.util.LinkedHashMap<>();
       }
       return l != null && l.name != null && l.hosts != null ? l : new Last();
     } catch (RuntimeException e) {
@@ -216,10 +216,16 @@ final class StartCenter extends JComponent {
     }
   }
 
+  private static final int MAX_INCLUDE_HISTORY = 64;
+
   private void saveLast(String name) {
     last.kind = kind;
     last.name.put(kind, name);
+    last.include.remove(name);
     last.include.put(name, include);
+    while (last.include.size() > MAX_INCLUDE_HISTORY) {
+      last.include.remove(last.include.keySet().iterator().next());
+    }
     if (kind.equals("ssh")) {
       last.ssh = w().copy();
       last.hosts.remove(last.ssh.host);
@@ -228,7 +234,15 @@ final class StartCenter extends JComponent {
     } else if (kind.equals("kubectl")) {
       last.kubectl = w().copy();
     }
-    app.prefs.put("last", LAST.toJson(last));
+    String json = LAST.toJson(last);
+    while (json.length() > java.util.prefs.Preferences.MAX_VALUE_LENGTH
+        && !last.include.isEmpty()) {
+      last.include.remove(last.include.keySet().iterator().next());
+      json = LAST.toJson(last);
+    }
+    if (json.length() <= java.util.prefs.Preferences.MAX_VALUE_LENGTH) {
+      app.prefs.put("last", json);
+    }
   }
 
   /** the Host field's suggestions: hosts used before, and the Host entries of ~/.ssh/config */
@@ -285,6 +299,7 @@ final class StartCenter extends JComponent {
   List<String> contexts, namespaces, pods;
 
   boolean kubeBusy;
+  private int kubeSeq;
 
   /**
    * Reads the contexts, the namespaces of the chosen one, its running pods and the pod's
@@ -293,6 +308,7 @@ final class StartCenter extends JComponent {
    */
   void loadKube(Runnable then) {
     Snapshot.Via v = w().copy();
+    int seq = ++kubeSeq;
     kubeBusy = true;
     err = null;
     renderParts();
@@ -329,7 +345,7 @@ final class StartCenter extends JComponent {
                 List<String> nsF = ns;
                 javax.swing.SwingUtilities.invokeLater(
                     () -> {
-                      if (!kind.equals("kubectl")) {
+                      if (!kind.equals("kubectl") || seq != kubeSeq) {
                         return;
                       }
                       kubeBusy = false;
@@ -349,6 +365,9 @@ final class StartCenter extends JComponent {
               } catch (java.io.IOException | RuntimeException e) {
                 javax.swing.SwingUtilities.invokeLater(
                     () -> {
+                      if (!kind.equals("kubectl") || seq != kubeSeq) {
+                        return;
+                      }
                       kubeBusy = false;
                       err = "kubectl: " + e.getMessage();
                       renderAll();
@@ -451,7 +470,8 @@ final class StartCenter extends JComponent {
     if (sel == null || attaching) {
       return;
     }
-    saveLast(sel.name);
+    Targets.Jvm target = sel;
+    saveLast(target.name);
     attaching = true;
     err = null;
     renderParts();
@@ -461,12 +481,12 @@ final class StartCenter extends JComponent {
     }
     app.connect(
         connector(w().copy()),
-        sel,
+        target,
         via,
         include.isBlank() ? null : include,
         why -> {
           attaching = false;
-          err = (sel.port > 0 ? "Could not connect: " : "Could not attach: ") + why;
+          err = (target.port > 0 ? "Could not connect: " : "Could not attach: ") + why;
           renderParts();
         });
   }
@@ -743,7 +763,7 @@ final class StartCenter extends JComponent {
     Btn go =
         primary(
             attaching
-                ? (sel.port == 0 ? "Attaching…" : "Connecting…")
+                ? (sel == null || sel.port == 0 ? "Attaching…" : "Connecting…")
                 : sel != null && sel.port == 0 ? "Attach and connect" : "Connect",
             this::connect);
     go.disabled(sel == null || attaching);

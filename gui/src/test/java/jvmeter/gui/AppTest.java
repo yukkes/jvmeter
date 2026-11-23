@@ -127,14 +127,28 @@ class AppTest {
   void tooltipsNeverRenderHtml() throws Exception {
     onEdt(
         () -> {
+          AxisChart chart =
+              new AxisChart(
+                  new jvmeter.core.Session(Snapshot.loadSample()),
+                  600,
+                  152,
+                  0,
+                  0,
+                  10,
+                  new int[] {6, 14, 12, 14});
           for (javax.swing.JComponent c :
-              List.of(new Table(), new Ui.Btn(() -> {}, "x"), new Ui.Box(Ui.Box.ROW))) {
+              List.of(new Table(), new Ui.Btn(() -> {}, "x"), new Ui.Box(Ui.Box.ROW), chart)) {
             javax.swing.JToolTip tip = c.createToolTip();
             tip.setTipText("<html><img src='http://example.invalid/x.png'>");
             assertNull(
                 tip.getClientProperty(javax.swing.plaf.basic.BasicHTML.propertyKey),
                 c.getClass().getSimpleName());
           }
+          // unknown icon path and zero-ymax chart do not crash
+          assertNotNull(Icons.parse(""));
+          assertNotNull(Icons.parse(null));
+          chart.setSize(600, 200);
+          chart.paint(new BufferedImage(600, 200, BufferedImage.TYPE_INT_RGB).createGraphics());
         });
   }
 

@@ -60,7 +60,7 @@ final class ThreadsView {
     root.add(OverviewView.head("Threads", legend));
     root.add(OverviewView.gap(14));
 
-    double sec = s.elapsed;
+    double sec = Math.max(1, s.elapsed);
     Box tl = new Box(Box.COL).pad(8, 14, 14, 14);
     Font f12 = Theme.sans(12, 400);
     for (int i = 0; i < s.threads.size(); i++) {

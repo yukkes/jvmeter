@@ -135,7 +135,7 @@ head -80 jvmeter-12345.json
 | **Memory › Heap & classes** | Heap over time, instance counts and sizes per class, Before / After diffs, and running a GC. Made for leak hunting (mark → wait → GC → see which classes grew). |
 | **Threads** | A state timeline per thread, why threads waited (a lock or I/O, and which thread held the lock), time per state, and the current stack. |
 
-- **Theme**: light and dark mode (by default it follows the OS).
+- **Theme**: light and dark mode (your choice is remembered).
 
 ---
 

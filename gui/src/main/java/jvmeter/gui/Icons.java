@@ -6,9 +6,10 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Material Symbols Rounded, drawn from their SVG path data (icons.properties) so no icon font is
@@ -17,10 +18,12 @@ import java.util.Properties;
 final class Icons {
 
   private static final Properties PATHS = new Properties();
-  private static final Map<String, Path2D> SHAPES = new HashMap<>();
+  private static final Map<String, Path2D> SHAPES = new ConcurrentHashMap<>();
 
   static {
-    try (InputStream in = Icons.class.getResourceAsStream("icons.properties")) {
+    try (InputStream in =
+        Objects.requireNonNull(
+            Icons.class.getResourceAsStream("icons.properties"), "icons.properties")) {
       PATHS.load(in);
     } catch (IOException e) {
       throw new IllegalStateException(e);
@@ -47,6 +50,9 @@ final class Icons {
    */
   static Path2D parse(String d) {
     Path2D.Double p = new Path2D.Double(Path2D.WIND_NON_ZERO);
+    if (d == null || d.isBlank()) {
+      return p;
+    }
     String[] tok =
         d.replaceAll("([A-Za-z])", " $1 ").replaceAll("(?<=[0-9.])-", " -").trim().split("[\\s,]+");
     double x = 0, y = 0, sx = 0, sy = 0, cx = 0, cy = 0;
