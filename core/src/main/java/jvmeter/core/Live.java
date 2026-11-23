@@ -89,6 +89,7 @@ public final class Live {
     public List<ThreadSec> states;
     public Snapshot.Node tree;
     public List<Snapshot.MethodCalls> methods;
+    public Long periodMs;
     public Map<String, List<String>> stacks;
     public List<Snapshot.Wait> waits;
     public List<Snapshot.Allocation> allocations;

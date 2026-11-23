@@ -118,4 +118,18 @@ class RecordingsTest {
     assertTrue(n.endsWith("-_evil-__pod-7"), n);
     assertEquals("_x", Recordings.safe("..x"));
   }
+
+  @Test
+  void writeOverwritesAnExistingSnapshot() throws IOException {
+    Path out = dir.resolve("jvmeter-out.json");
+    Snapshot first = Snapshot.loadSample();
+    first.target.pid = 111;
+    Recordings.write(new Session(first), out);
+    assertEquals(111, Snapshot.read(out).target.pid);
+
+    Snapshot second = Snapshot.loadSample();
+    second.target.pid = 222;
+    Recordings.write(new Session(second), out);
+    assertEquals(222, Snapshot.read(out).target.pid);
+  }
 }

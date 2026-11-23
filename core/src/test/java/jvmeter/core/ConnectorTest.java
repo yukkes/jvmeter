@@ -145,4 +145,32 @@ class ConnectorTest {
     assertEquals(
         "Host key verification failed.", assertThrows(IOException.class, s::list).getMessage());
   }
+
+  @Test
+  void rejectsCommandAndOptionInjection() {
+    Connector.Shell unused = (argv, stdin) -> new Connector.Result(0, "[]", "");
+    for (String badHost : List.of("-oProxyCommand=id", "host name", "host\nid")) {
+      Snapshot.Via w = new Snapshot.Via("ssh");
+      w.host = badHost;
+      Connector c = new Connector(w, Path.of(Targets.JAR), unused);
+      assertThrows(IllegalArgumentException.class, () -> c.there("true", false), badHost);
+      assertThrows(IllegalArgumentException.class, () -> c.forward(1234), badHost);
+    }
+    for (String badUser : List.of("app; id", "app$(id)", "-root", "a b", "../root")) {
+      Snapshot.Via w = new Snapshot.Via("ssh");
+      w.host = "prod-1";
+      w.runAs = badUser;
+      Connector c = new Connector(w, Path.of(Targets.JAR), unused);
+      assertThrows(IllegalArgumentException.class, () -> c.there("true", false), badUser);
+      assertThrows(IllegalArgumentException.class, c::remoteJar, badUser);
+    }
+    Snapshot.Via k = new Snapshot.Via("kubectl");
+    k.context = "-bad";
+    k.namespace = "ns";
+    k.pod = "pod";
+    k.container = "app";
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new Connector(k, Path.of(Targets.JAR), unused).there("true", false));
+  }
 }

@@ -3,7 +3,6 @@ package jvmeter.core;
 import io.avaje.jsonb.Jsonb;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -31,33 +30,43 @@ public final class SnapshotWriter {
 
   private SnapshotWriter() {}
 
-  private static final io.avaje.jsonb.JsonType<Snapshot> JSON =
-      Jsonb.builder().build().type(Snapshot.class);
+  private static final Jsonb JSONB = Snapshot.JSONB;
+  private static final io.avaje.jsonb.JsonType<Snapshot> JSON = JSONB.type(Snapshot.class);
 
   /** the snapshot file: about and summary first (for a reader), then the raw snapshot fields */
   public static String write(Session s) {
-    Snapshot r = raw(s);
-    r.format = FORMAT;
-    r.about = about();
-    r.summary = summary(s);
-    return JSON.toJsonPretty(r) + "\n";
+    return JSON.toJsonPretty(prepare(s)) + "\n";
   }
 
   /** Writes the snapshot as JSON (UTF-8), which people, editors and LLMs read as it is */
   public static void write(Session s, Path file) throws IOException {
-    try (OutputStream out = Files.newOutputStream(file)) {
-      out.write(write(s).getBytes(StandardCharsets.UTF_8));
+    try (OutputStream out = new java.io.BufferedOutputStream(Files.newOutputStream(file), 1 << 16);
+        io.avaje.json.JsonWriter w = JSONB.writer(out)) {
+      w.pretty(true);
+      JSON.toJson(prepare(s), w);
+      w.writeNewLine();
     }
   }
 
+  private static Snapshot prepare(Session s) {
+    Snapshot r = raw(s);
+    r.format = FORMAT;
+    r.about = about(r.cpu != null ? r.cpu.periodMs : null);
+    r.summary = summary(s);
+    return r;
+  }
+
   /** the "about" lines */
-  private static List<String> about() {
+  private static List<String> about(Long periodMs) {
+    long ms = periodMs != null && periodMs > 0 ? periodMs : 1;
     return List.of(
         "jvmeter JVM profiling snapshot. 'summary' is derived from the raw data that follows"
             + " and is the place to start; it is ignored when the file is loaded.",
         "Units: times in milliseconds (keys ending in Ms), seconds where the key ends in Sec,"
             + " sizes in MB.",
-        "CPU times are estimated from JFR execution samples taken every 1 ms; call counts are"
+        "CPU times are estimated from JFR execution samples taken every "
+            + ms
+            + " ms; call counts are"
             + " exact (bytecode instrumentation). self = time in the method's own code, total ="
             + " self + callees.",
         "cpu.tree: call tree from the thread roots; each node has name, self (ms), calls and"
@@ -125,6 +134,8 @@ public final class SnapshotWriter {
   static Map<String, Object> summary(Session s) {
     Map<String, Object> sum = new LinkedHashMap<>();
     List<String> findings = new ArrayList<>();
+    // findings first so head -80 holds the gist of the profile (about + findings + top CPU)
+    sum.put("findings", findings);
     double totalCpu = s.tree.root.total;
 
     Map<String, Object> cpu = new LinkedHashMap<>();
@@ -292,7 +303,6 @@ public final class SnapshotWriter {
       mem.put("allocationHotSpots", top);
     }
     sum.put("memory", mem);
-    sum.put("findings", findings);
     return sum;
   }
 

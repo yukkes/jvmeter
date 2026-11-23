@@ -100,24 +100,57 @@ public final class Connector implements Closeable {
   List<String> there(String cmd, boolean stdin) {
     List<String> a = new ArrayList<>();
     if (w.kind.equals("ssh")) {
+      String host = checkArg(w.host, "Host");
+      String runAs = blank(w.runAs) ? null : checkUser(w.runAs);
       // BatchMode: no terminal, so a password prompt fails at once; sudo -n likewise
-      a.addAll(List.of("ssh", "-o", "BatchMode=yes", w.host, "--"));
-      a.add((blank(w.runAs) ? "" : "sudo -n -u " + w.runAs + " ") + "sh -c " + quote(cmd));
+      a.addAll(List.of("ssh", "-o", "BatchMode=yes", host, "--"));
+      a.add((runAs == null ? "" : "sudo -n -u " + runAs + " ") + "sh -c " + quote(cmd));
     } else {
       a.addAll(kubectl(w.context, w.namespace, "exec"));
       if (stdin) {
         a.add("-i");
       }
-      a.addAll(List.of(w.pod, "-c", w.container, "--", "sh", "-c", cmd));
+      a.addAll(
+          List.of(
+              checkArg(w.pod, "Pod"),
+              "-c",
+              checkArg(w.container, "Container"),
+              "--",
+              "sh",
+              "-c",
+              cmd));
     }
     return a;
   }
 
   /** kubectl --context context -n namespace args */
   static List<String> kubectl(String context, String namespace, String... args) {
-    List<String> a = new ArrayList<>(List.of("kubectl", "--context", context, "-n", namespace));
+    List<String> a =
+        new ArrayList<>(
+            List.of(
+                "kubectl",
+                "--context",
+                checkArg(context, "Context"),
+                "-n",
+                checkArg(namespace, "Namespace")));
     a.addAll(List.of(args));
     return a;
+  }
+
+  /** rejects leading '-' (option injection), blanks, whitespace and control characters */
+  private static String checkArg(String s, String name) {
+    if (blank(s) || s.startsWith("-") || s.chars().anyMatch(c -> c <= 0x20 || c == 0x7f)) {
+      throw new IllegalArgumentException("Invalid " + name + ": " + s);
+    }
+    return s;
+  }
+
+  /** POSIX user name only: goes into sudo -u and ~user without shell quoting */
+  private static String checkUser(String s) {
+    if (s.startsWith("-") || !s.matches("[A-Za-z0-9._-]+")) {
+      throw new IllegalArgumentException("Invalid Run as user: " + s);
+    }
+    return s;
   }
 
   public static boolean blank(String s) {
@@ -133,7 +166,7 @@ public final class Connector implements Closeable {
   String remoteJar() {
     return w.kind.equals("kubectl")
         ? "/tmp/jvmeter/" + Targets.JAR
-        : "~" + (blank(w.runAs) ? "" : w.runAs) + "/.jvmeter/" + Targets.JAR;
+        : "~" + (blank(w.runAs) ? "" : checkUser(w.runAs)) + "/.jvmeter/" + Targets.JAR;
   }
 
   /** copies the agent jar there, unless the same one (by SHA-256) is there already */
@@ -300,7 +333,8 @@ public final class Connector implements Closeable {
     if (w.kind.equals("local")) {
       return new int[] {port};
     }
-    int local = free(), local6 = free();
+    int[] pair = freePair();
+    int local = pair[0], local6 = pair[1];
     List<String> argv =
         w.kind.equals("ssh")
             ? List.of(
@@ -314,14 +348,14 @@ public final class Connector implements Closeable {
                 "127.0.0.1:" + local + ":127.0.0.1:" + port,
                 "-L",
                 "127.0.0.1:" + local6 + ":[::1]:" + port,
-                w.host)
+                checkArg(w.host, "Host"))
             : kubectl(
                 w.context,
                 w.namespace,
                 "port-forward",
                 "--address",
                 "127.0.0.1",
-                "pod/" + w.pod,
+                "pod/" + checkArg(w.pod, "Pod"),
                 local + ":" + port);
     int[] ports = w.kind.equals("ssh") ? new int[] {local, local6} : new int[] {local};
     forwarding = sh.start(argv);
@@ -335,11 +369,13 @@ public final class Connector implements Closeable {
       try (java.net.Socket s = new java.net.Socket()) {
         s.connect(
             new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(), local), 200);
+        drain(forwarding.getErrorStream());
         return ports;
       } catch (IOException notYet) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {
+          close();
           Thread.currentThread().interrupt();
           throw new IOException("interrupted", e);
         }
@@ -347,6 +383,22 @@ public final class Connector implements Closeable {
     }
     close();
     throw new IOException("The port forward did not start in 10 s: " + String.join(" ", argv));
+  }
+
+  /** keeps a long-lived port-forward process from blocking when its stderr buffer fills */
+  private static void drain(InputStream in) {
+    Thread t =
+        new Thread(
+            () -> {
+              try (in) {
+                in.transferTo(java.io.OutputStream.nullOutputStream());
+              } catch (IOException ignored) {
+                // process ended
+              }
+            },
+            "jvmeter-forward-stderr");
+    t.setDaemon(true);
+    t.start();
   }
 
   // ---------- what kubectl knows, for the Start Center's fields ----------
@@ -368,7 +420,15 @@ public final class Connector implements Closeable {
     return lines(
         ok(
             sh.run(
-                List.of("kubectl", "--context", context, "get", "namespaces", "-o", "name"), null)),
+                List.of(
+                    "kubectl",
+                    "--context",
+                    checkArg(context, "Context"),
+                    "get",
+                    "namespaces",
+                    "-o",
+                    "name"),
+                null)),
         "namespace/");
   }
 
@@ -399,7 +459,7 @@ public final class Connector implements Closeable {
                     namespace,
                     "get",
                     "pod",
-                    pod,
+                    checkArg(pod, "Pod"),
                     "-o",
                     "jsonpath={.spec.containers[*].name}"),
                 null));
@@ -417,10 +477,12 @@ public final class Connector implements Closeable {
     return l;
   }
 
-  private static int free() throws IOException {
-    try (java.net.ServerSocket s =
-        new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())) {
-      return s.getLocalPort();
+  /** two distinct free loopback ports, opened together so the OS never gives the same one twice */
+  private static int[] freePair() throws IOException {
+    java.net.InetAddress lo = java.net.InetAddress.getLoopbackAddress();
+    try (java.net.ServerSocket a = new java.net.ServerSocket(0, 1, lo);
+        java.net.ServerSocket b = new java.net.ServerSocket(0, 1, lo)) {
+      return new int[] {a.getLocalPort(), b.getLocalPort()};
     }
   }
 

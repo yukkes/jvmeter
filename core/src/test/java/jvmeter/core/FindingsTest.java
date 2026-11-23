@@ -1,6 +1,8 @@
 package jvmeter.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.avaje.jsonb.Jsonb;
 import java.io.IOException;
@@ -80,5 +82,22 @@ class FindingsTest {
       act.add(f.sev + " " + f.icon + " | " + line + " | " + f.small + " | " + f.link);
     }
     assertEquals(exp, act);
+  }
+
+  @Test
+  void starIncludeTreatsNonJdkAsOwnAndZeroAllocationsProduceNoNan() {
+    var own = Findings.own("*");
+    assertTrue(own.test("com.example.orders.App.run"));
+    assertFalse(own.test("java.lang.String.valueOf"));
+    assertFalse(own.test("jdk.internal.misc.Unsafe.park"));
+
+    Snapshot snap = Snapshot.loadSample();
+    Snapshot.Allocation zero = new Snapshot.Allocation();
+    zero.site = "com.example.App.work";
+    zero.cls = "byte[]";
+    zero.mb = 0.0;
+    snap.memory.allocations = List.of(zero);
+    List<Findings.Finding> fs = Findings.of(new Session(snap), null, null);
+    assertTrue(fs.stream().noneMatch(f -> f.text().contains("NaN")));
   }
 }

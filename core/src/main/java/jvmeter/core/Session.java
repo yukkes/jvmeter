@@ -218,11 +218,27 @@ public final class Session {
   /** rows comparing Before (a) with After, or with now when after is null */
   public List<AbRow> abRows(ClassSnap before, ClassSnap after) {
     List<AbRow> rows = new ArrayList<>();
+    java.util.Set<String> seen = new java.util.HashSet<>();
     for (ClassStat c : classes) {
+      seen.add(c.name);
       long b = after != null ? after.count.getOrDefault(c.name, 0L) : c.count;
       long bb = after != null ? after.bytes.getOrDefault(c.name, 0L) : c.bytes;
       long a = before.count.getOrDefault(c.name, 0L);
       rows.add(new AbRow(c, a, b, b - a, bb - before.bytes.getOrDefault(c.name, 0L)));
+    }
+    java.util.Set<String> extra = new java.util.LinkedHashSet<>(before.count.keySet());
+    if (after != null) {
+      extra.addAll(after.count.keySet());
+    }
+    for (String name : extra) {
+      if (seen.add(name)) {
+        long b = after != null ? after.count.getOrDefault(name, 0L) : 0L;
+        long bb = after != null ? after.bytes.getOrDefault(name, 0L) : 0L;
+        long a = before.count.getOrDefault(name, 0L);
+        rows.add(
+            new AbRow(
+                new ClassStat(name, 0, 0), a, b, b - a, bb - before.bytes.getOrDefault(name, 0L)));
+      }
     }
     return rows;
   }
@@ -274,6 +290,7 @@ public final class Session {
         snap.cpu = new Snapshot.Cpu();
         snap.cpu.tree = m.tree;
         snap.cpu.methods = m.methods;
+        snap.cpu.periodMs = m.periodMs;
         tree = new CallTree(snap.cpu);
         if (m.stacks != null) {
           m.stacks.forEach(
