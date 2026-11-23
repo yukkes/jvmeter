@@ -99,4 +99,35 @@ class CountTransformerTest {
         new String[] {"com/example/", "app/", "Hello", "*"},
         CountTransformer.prefixes("com.example, app/, Hello, *"));
   }
+
+  /** explicit includes still never instrument the JDK, the agent, or ASM */
+  @Test
+  void skipAlwaysAppliesEvenWhenIncludedExplicitly() {
+    String[] explicit =
+        CountTransformer.prefixes(
+            "java.lang, jdk, sun, jvmeter.agent, jvmeter.core, org.objectweb.asm");
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "java/lang/Thread"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "jdk/jfr/Event"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "sun/misc/Unsafe"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "jvmeter/agent/CallCounter"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "jvmeter/core/Live"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(explicit, "org/objectweb/asm/ClassVisitor"));
+    org.junit.jupiter.api.Assertions.assertTrue(
+        CountTransformer.matches(CountTransformer.prefixes("jvmeter.gui"), "jvmeter/gui/App"));
+    // class-name include matches the class and its nested classes, not sibling classes
+    String[] cls = CountTransformer.prefixes("com.example.App, Hello");
+    org.junit.jupiter.api.Assertions.assertTrue(CountTransformer.matches(cls, "com/example/App"));
+    org.junit.jupiter.api.Assertions.assertTrue(
+        CountTransformer.matches(cls, "com/example/App$Helper"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        CountTransformer.matches(cls, "com/example/AppConfig"));
+    org.junit.jupiter.api.Assertions.assertTrue(CountTransformer.matches(cls, "Hello"));
+    org.junit.jupiter.api.Assertions.assertFalse(CountTransformer.matches(cls, "HelloWorld"));
+  }
 }

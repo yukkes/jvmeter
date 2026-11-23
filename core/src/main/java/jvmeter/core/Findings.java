@@ -98,7 +98,13 @@ public final class Findings {
                         ? x
                         : x + ".")
             .toList();
-    return n -> p.stream().anyMatch(n::startsWith);
+    return n ->
+        p.stream()
+            .anyMatch(
+                x ->
+                    x.endsWith(".")
+                        ? n.startsWith(x)
+                        : n.equals(x) || n.startsWith(x + ".") || n.startsWith(x + "$"));
   }
 
   /** before / after: the reference points picked on the Memory view (null: none) */

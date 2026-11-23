@@ -33,11 +33,16 @@ public class CountTransformer implements ClassFileTransformer {
   private volatile String[] include = {};
 
   /**
-   * never counted, even with "*": the JDK (instrumented code in its hot paths could call the
-   * counter recursively), the agent itself, and ASM (retransforming it while it transforms a class
-   * would recurse)
+   * never counted, even if included explicitly: the JDK (instrumented code in its hot paths could
+   * call the counter recursively), the agent itself, and ASM (retransforming it while it transforms
+   * a class would recurse)
    */
-  private static final String[] SKIP = {"java/", "jdk/", "sun/", "jvmeter/", "org/objectweb/asm/"};
+  private static final String[] SKIP = {
+    "java/", "jdk/", "sun/", "jvmeter/agent/", "jvmeter/core/", "org/objectweb/asm/"
+  };
+
+  private static final java.util.concurrent.atomic.AtomicBoolean LIMIT_WARNED =
+      new java.util.concurrent.atomic.AtomicBoolean();
 
   private volatile String packages = "";
 
@@ -56,13 +61,21 @@ public class CountTransformer implements ClassFileTransformer {
         redo.add(c);
       }
     }
-    // one class at a time: a class that cannot be retransformed (e.g. a hidden class) must not stop
-    // the others
-    for (Class<?> c : redo) {
+    // retransform in batches to minimize safepoints; fall back to one-by-one if a batch fails
+    // (e.g. contains a hidden class that cannot be retransformed)
+    int batchSize = 128;
+    for (int i = 0; i < redo.size(); i += batchSize) {
+      List<Class<?>> sub = redo.subList(i, Math.min(i + batchSize, redo.size()));
       try {
-        inst.retransformClasses(c);
-      } catch (Throwable t) {
-        // left as it was
+        inst.retransformClasses(sub.toArray(new Class<?>[0]));
+      } catch (Throwable batchFailed) {
+        for (Class<?> c : sub) {
+          try {
+            inst.retransformClasses(c);
+          } catch (Throwable t) {
+            // left as it was
+          }
+        }
       }
     }
   }
@@ -113,16 +126,23 @@ public class CountTransformer implements ClassFileTransformer {
   }
 
   static boolean matches(String[] include, String className) {
+    for (String s : SKIP) {
+      if (className.startsWith(s)) {
+        return false;
+      }
+    }
     for (String p : include) {
       if (p.equals("*")) {
-        for (String s : SKIP) {
-          if (className.startsWith(s)) {
-            return false;
-          }
-        }
         return true;
       }
-      if (!p.isEmpty() && className.startsWith(p)) {
+      if (p.isEmpty()) {
+        continue;
+      }
+      if (p.endsWith("/")) {
+        if (className.startsWith(p)) {
+          return true;
+        }
+      } else if (className.equals(p) || className.startsWith(p + "$")) {
         return true;
       }
     }
@@ -164,6 +184,12 @@ public class CountTransformer implements ClassFileTransformer {
       }
       int id = MethodRegistry.register(className.replace('/', '.') + "." + name + descriptor);
       if (id >= CallCounter.MAX_METHODS) {
+        if (LIMIT_WARNED.compareAndSet(false, true)) {
+          System.err.println(
+              "[jvmeter] WARNING: reached the limit of "
+                  + (CallCounter.MAX_METHODS - 1)
+                  + " counted methods; further methods will not be counted (narrow include)");
+        }
         return mv; // methods beyond the limit are not counted
       }
       // a constructor counts after super(), when its argument slots may hold something else

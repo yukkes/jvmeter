@@ -1006,7 +1006,7 @@ function ownCode(include) {
   const tokens = (include || "").split(",").map(x => x.trim()).filter(x => x);
   if (!tokens.length || tokens.includes("*")) return n => !/^(java|javax|jdk|sun|com\.sun)\./.test(n);
   const p = tokens.map(x => x.endsWith(".") || /[A-Z]/.test(x[x.lastIndexOf(".") + 1]) ? x : x + ".");
-  return n => p.some(x => n.startsWith(x));
+  return n => p.some(x => x.endsWith(".") ? n.startsWith(x) : n === x || n.startsWith(x + ".") || n.startsWith(x + "$"));
 }
 const RANK = ["bad", "warn", "info", "ok"];
 const secText = s => Math.round(s * 10) / 10 + " s";

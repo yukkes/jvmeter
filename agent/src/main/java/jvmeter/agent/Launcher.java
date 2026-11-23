@@ -85,16 +85,20 @@ public final class Launcher {
   private static Targets.Jvm jvm(long pid, String command, String jvm, String args) {
     Targets.Jvm m =
         new Targets.Jvm(
-            pid,
-            Agent.mainClass(command == null || command.isBlank() ? "?" : command.split(" ")[0]),
-            jvm,
-            args == null ? "" : args,
-            0);
+            pid, Agent.mainClass(Agent.mainToken(command)), jvm, args == null ? "" : args, 0);
     String f = AgentFile.read(pid);
     if (f != null) {
-      Map<String, Object> a = Server.jsonb().type(Object.class).map().fromJson(f);
-      m.port = ((Number) a.get("port")).intValue();
-      m.token = (String) a.get("token");
+      try {
+        Map<String, Object> a = Server.jsonb().type(Object.class).map().fromJson(f);
+        if (a != null
+            && a.get("port") instanceof Number port
+            && a.get("token") instanceof String tok) {
+          m.port = port.intValue();
+          m.token = tok;
+        }
+      } catch (RuntimeException ignored) {
+        // corrupt or partial agent file for one JVM must not break listing the others
+      }
     }
     return m;
   }

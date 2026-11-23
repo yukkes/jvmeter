@@ -60,6 +60,8 @@ final class ThreadSampler {
   private final ThreadMXBean mx = ManagementFactory.getThreadMXBean();
   private final Map<Long, Track> tracks = new LinkedHashMap<>();
   private final Map<String, Place> waits = new HashMap<>();
+  private int aliveCount;
+  private boolean limitWarned;
 
   /** the application's code (Findings.own) */
   private final java.util.function.Predicate<String> own;
@@ -73,6 +75,7 @@ final class ThreadSampler {
     for (Track k : tracks.values()) {
       k.alive = false;
     }
+    int live = 0;
     for (ThreadInfo ti : mx.dumpAllThreads(false, false, DEPTH)) {
       // jvmeter's own threads, and JFR's, which run because jvmeter records
       if (ti == null
@@ -84,10 +87,21 @@ final class ThreadSampler {
       if (st < 0) {
         continue;
       }
+      live++;
       Track k = tracks.get(ti.getThreadId());
       if (k == null) {
         if (tracks.size() >= MAX_THREADS) {
-          continue;
+          if (!limitWarned) {
+            limitWarned = true;
+            System.err.println(
+                "[jvmeter] WARNING: more than "
+                    + MAX_THREADS
+                    + " threads: ended threads' timelines are dropped to make room, and new"
+                    + " threads are not tracked while none has ended");
+          }
+          if (!evictEnded()) {
+            continue;
+          }
         }
         k =
             new Track(
@@ -112,6 +126,29 @@ final class ThreadSampler {
             st == 2 ? ti.getLockOwnerName() : null);
       }
     }
+    aliveCount = live;
+  }
+
+  /** frees one slot held by an ended thread (preferring unblocked ones) when at MAX_THREADS */
+  private boolean evictEnded() {
+    Long victim = null;
+    for (Map.Entry<Long, Track> e : tracks.entrySet()) {
+      Track k = e.getValue();
+      if (!k.alive) {
+        if (k.sec[2] == 0) {
+          victim = e.getKey();
+          break;
+        }
+        if (victim == null) {
+          victim = e.getKey();
+        }
+      }
+    }
+    if (victim != null) {
+      tracks.remove(victim);
+      return true;
+    }
+    return false;
   }
 
   private void wait(String thread, String state, List<String> stack, String lock, String owner) {
@@ -215,7 +252,7 @@ final class ThreadSampler {
   }
 
   synchronized int count() {
-    return (int) tracks.values().stream().filter(k -> k.alive).count();
+    return aliveCount;
   }
 
   /** -1 for threads not started or ended */

@@ -154,7 +154,7 @@ public final class Agent {
   }
 
   static Duration period() {
-    return Duration.ofMillis(Long.getLong("jvmeter.period", 1));
+    return Duration.ofMillis(Math.max(1, Long.getLong("jvmeter.period", 1)));
   }
 
   /**
@@ -162,12 +162,12 @@ public final class Agent {
    * only)
    */
   static int histogramEvery() {
-    return Integer.getInteger("jvmeter.histogram", 30);
+    return Math.max(0, Integer.getInteger("jvmeter.histogram", 30));
   }
 
   static Snapshot.Target target() {
     Snapshot.Target t = new Snapshot.Target();
-    t.name = mainClass(System.getProperty("sun.java.command", "?").split(" ")[0]);
+    t.name = mainClass(mainToken(System.getProperty("sun.java.command", "?")));
     t.pid = ProcessHandle.current().pid();
     t.jvm =
         Targets.jvmLabel(System.getProperty("java.vm.name"), System.getProperty("java.version"));
@@ -183,16 +183,27 @@ public final class Agent {
    */
   private static void install(String args, Instrumentation inst) throws IOException {
     Agent.inst = inst;
+    Map<String, String> opts = options(args);
     inst.appendToBootstrapClassLoaderSearch(new JarFile(bootJar().toFile()));
     counts = new CountTransformer();
     inst.addTransformer(counts, true);
-    String include =
-        options(args)
-            .getOrDefault("include", System.getProperty("jvmeter.include", defaultInclude()));
-    // after an attach, the classes already loaded are retransformed; at startup there are none of
-    // the application yet
-    counts.include(inst, include);
-    server = new Server(Integer.parseInt(options(args).getOrDefault("port", "0")));
+    try {
+      String include =
+          attached
+              ? opts.getOrDefault("include", "")
+              : opts.getOrDefault(
+                  "include", System.getProperty("jvmeter.include", defaultInclude()));
+      // after an attach with explicit include, retransform now; otherwise wait for the start
+      // command so we do not retransform twice or run counters before recording begins
+      if (!include.isEmpty()) {
+        counts.include(inst, include);
+      }
+      server = new Server(Integer.parseInt(opts.getOrDefault("port", "0")));
+    } catch (IOException | RuntimeException e) {
+      counts.include(inst, "");
+      inst.removeTransformer(counts);
+      throw e;
+    }
     Runtime.getRuntime().addShutdownHook(new Thread(Agent::atExit, "jvmeter-exit"));
     debugNonSafepoints = debugNonSafepoints();
     if (Boolean.FALSE.equals(debugNonSafepoints)) {
@@ -204,23 +215,62 @@ public final class Agent {
 
   /**
    * Instrumented code calls CallCounter, so it must be on the boot class path, where every class
-   * loader finds it. It is copied from this jar into a new temporary jar (readable by this user
-   * only), so the agent is a single file. The classes are read as resources: loading them here
-   * would load them from the wrong class loader.
+   * loader finds it. It is copied from this jar into a user-only file (reused by content hash so
+   * repeated runs do not accumulate temp files on Windows or after SIGKILL). The classes are read
+   * as resources: loading them here would load them from the wrong class loader.
    */
   private static Path bootJar() throws IOException {
-    Path jar = Files.createTempFile("jvmeter-rt", ".jar");
-    jar.toFile().deleteOnExit();
-    try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {
+    java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+    try (JarOutputStream out = new JarOutputStream(buf)) {
       for (String c :
           List.of("jvmeter/agent/CallCounter.class", "jvmeter/agent/MethodRegistry.class")) {
-        out.putNextEntry(new JarEntry(c));
+        JarEntry entry = new JarEntry(c);
+        entry.setTime(0); // deterministic bytes so the hash only changes with class contents
+        out.putNextEntry(entry);
         try (InputStream in =
             Objects.requireNonNull(Agent.class.getClassLoader().getResourceAsStream(c), c)) {
           in.transferTo(out);
         }
       }
     }
+    byte[] bytes = buf.toByteArray();
+    Path dir = AgentFile.dir();
+    if (dir != null) {
+      String hash;
+      try {
+        hash =
+            java.util.HexFormat.of()
+                .formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes))
+                .substring(0, 16);
+      } catch (java.security.NoSuchAlgorithmException e) {
+        throw new IllegalStateException(e);
+      }
+      Path jar = dir.resolve("jvmeter-rt-" + hash + ".jar");
+      if (!Files.isRegularFile(jar)) {
+        Path tmp = Files.createTempFile(dir, "jvmeter-rt-", ".tmp");
+        try {
+          Files.write(tmp, bytes);
+          try {
+            Files.move(
+                tmp,
+                jar,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+          } catch (java.nio.file.AtomicMoveNotSupportedException fallback) {
+            Files.move(tmp, jar, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+          }
+        } catch (IOException e) {
+          Files.deleteIfExists(tmp);
+          if (!Files.isRegularFile(jar)) {
+            throw e;
+          }
+        }
+      }
+      return jar;
+    }
+    Path jar = Files.createTempFile("jvmeter-rt", ".jar");
+    jar.toFile().deleteOnExit();
+    Files.write(jar, bytes);
     return jar;
   }
 
@@ -245,10 +295,48 @@ public final class Agent {
 
   /** the main class's package: "com.example.orders.App" -> "com.example.orders" */
   static String defaultInclude() {
-    String main = mainClass(System.getProperty("sun.java.command", "").split(" ")[0]);
-    return main.endsWith(".jar")
+    String main = mainClass(mainToken(System.getProperty("sun.java.command", "")));
+    return main.equals("?") || main.endsWith(".jar")
         ? ""
         : main.contains(".") ? main.substring(0, main.lastIndexOf('.')) : main;
+  }
+
+  /**
+   * extracts the jar path (preserving spaces in the path) or main class name from sun.java.command
+   */
+  static String mainToken(String command) {
+    if (command == null || command.isBlank()) {
+      return "?";
+    }
+    String s = command.stripLeading();
+    int sp = s.indexOf(' ');
+    if (sp < 0) {
+      return s;
+    }
+    // a main class ("app.Main /data/lib.jar") is no path: a .jar further on is an argument then,
+    // unless the words up to it name a file here ("my app.jar" in the working directory)
+    String first = s.substring(0, sp);
+    boolean path = first.indexOf('/') >= 0 || first.indexOf('\\') >= 0;
+    int jar = s.indexOf(".jar");
+    while (jar >= 0) {
+      int end = jar + 4;
+      if (end == s.length() || Character.isWhitespace(s.charAt(end))) {
+        String candidate = s.substring(0, end);
+        if (!candidate.contains(" -") && (end <= sp || path || isFile(candidate))) {
+          return candidate;
+        }
+      }
+      jar = s.indexOf(".jar", end);
+    }
+    return first;
+  }
+
+  private static boolean isFile(String path) {
+    try {
+      return Files.isRegularFile(Path.of(path));
+    } catch (RuntimeException invalidPath) {
+      return false;
+    }
   }
 
   /**

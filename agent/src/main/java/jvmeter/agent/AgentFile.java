@@ -40,7 +40,7 @@ final class AgentFile {
         }
         // a directory someone else created (in a shared /tmp) could be read by them
         if (Files.isWritable(d)
-            && Files.getOwner(d).getName().equals(user)
+            && ownerMatches(Files.getOwner(d).getName(), user)
             && !Files.isSymbolicLink(d)) {
           return d;
         }
@@ -49,6 +49,11 @@ final class AgentFile {
       }
     }
     return null;
+  }
+
+  /** Windows domain accounts report owner as DOMAIN backslash user while user.name is user */
+  static boolean ownerMatches(String owner, String user) {
+    return owner != null && user != null && (owner.equals(user) || owner.endsWith("\\" + user));
   }
 
   static Path of(long pid) {
@@ -75,13 +80,26 @@ final class AgentFile {
       tmp = Files.createTempFile(f.getParent(), "agent-", ".tmp");
     }
     Files.writeString(tmp, json, StandardCharsets.UTF_8);
-    Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    try {
+      Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    } catch (java.nio.file.AtomicMoveNotSupportedException fallback) {
+      Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING);
+    }
   }
 
   static String read(long pid) {
     try {
       Path f = of(pid);
-      return f != null && Files.isRegularFile(f) ? Files.readString(f) : null;
+      if (f == null || !Files.isRegularFile(f)) {
+        return null;
+      }
+      var started = ProcessHandle.of(pid).flatMap(p -> p.info().startInstant());
+      if (started.isPresent()
+          && Files.getLastModifiedTime(f).toInstant().isBefore(started.get().minusSeconds(5))) {
+        Files.deleteIfExists(f); // stale file from an earlier process that had this PID
+        return null;
+      }
+      return Files.readString(f);
     } catch (IOException e) {
       return null;
     }

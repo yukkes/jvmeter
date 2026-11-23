@@ -91,6 +91,12 @@ class FindingsTest {
     assertFalse(own.test("java.lang.String.valueOf"));
     assertFalse(own.test("jdk.internal.misc.Unsafe.park"));
 
+    var clsOwn = Findings.own("com.example.App");
+    assertTrue(clsOwn.test("com.example.App"));
+    assertTrue(clsOwn.test("com.example.App.run"));
+    assertTrue(clsOwn.test("com.example.App$Inner.run"));
+    assertFalse(clsOwn.test("com.example.AppConfig.run"));
+
     Snapshot snap = Snapshot.loadSample();
     Snapshot.Allocation zero = new Snapshot.Allocation();
     zero.site = "com.example.App.work";
