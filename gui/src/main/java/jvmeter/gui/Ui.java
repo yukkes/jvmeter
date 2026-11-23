@@ -409,9 +409,8 @@ final class Ui {
       if (line != null) {
         g.setColor(line);
         g.setStroke(new BasicStroke(1));
-        g.draw(
-            new RoundRectangle2D.Double(
-                0.5, 0.5, getWidth() - 1, getHeight() - 1, arc - 1, arc - 1));
+        int ia = Math.max(0, arc - 1);
+        g.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 1, getHeight() - 1, ia, ia));
       }
       g.dispose();
     }
@@ -569,12 +568,17 @@ final class Ui {
         List<String> split = new ArrayList<>();
         for (String l : out) {
           while (width(l) > w + 0.5 && l.length() > 1) {
-            int n = l.length() - 1;
-            while (n > 1 && width(l.substring(0, n)) > w + 0.5) {
-              n--;
+            int lo = 1, hi = l.length() - 1;
+            while (lo < hi) {
+              int mid = (lo + hi + 1) >>> 1;
+              if (width(l.substring(0, mid)) <= w + 0.5) {
+                lo = mid;
+              } else {
+                hi = mid - 1;
+              }
             }
-            split.add(l.substring(0, n));
-            l = l.substring(n);
+            split.add(l.substring(0, lo));
+            l = l.substring(lo);
           }
           split.add(l);
         }
@@ -682,16 +686,21 @@ final class Ui {
    * when it fits
    */
   static String ellipsize(Font f, String s, double w) {
-    if (width(f, s) <= w + 0.5) {
+    if (s.isEmpty() || width(f, s) <= w + 0.5) {
       return s;
     }
     // like the browser, the first character stays even when it and the ellipsis do not fit (they
     // are clipped)
-    int n = s.length();
-    while (n > 1 && width(f, s.substring(0, n) + "…") > w + 0.01) {
-      n--;
+    int lo = 1, hi = s.length();
+    while (lo < hi) {
+      int mid = (lo + hi + 1) >>> 1;
+      if (width(f, s.substring(0, mid) + "…") <= w + 0.01) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
     }
-    return s.substring(0, n) + "…";
+    return s.substring(0, lo) + "…";
   }
 
   static final Font M_FONT = Theme.sans(13, 400);
@@ -1174,12 +1183,20 @@ final class Ui {
         }
 
         void show(javax.swing.JScrollBar bar) {
-          bar.putClientProperty("FlatLaf.style", barShown());
+          String style = barShown();
+          if (!style.equals(bar.getClientProperty("shown"))) {
+            bar.putClientProperty("FlatLaf.style", style);
+            bar.putClientProperty("shown", style);
+          }
           javax.swing.Timer t = (javax.swing.Timer) bar.getClientProperty("hide");
           if (t == null) {
             t =
                 new javax.swing.Timer(
-                    1200, ev -> bar.putClientProperty("FlatLaf.style", BAR_HIDDEN));
+                    1200,
+                    ev -> {
+                      bar.putClientProperty("FlatLaf.style", BAR_HIDDEN);
+                      bar.putClientProperty("shown", null);
+                    });
             t.setRepeats(false);
             bar.putClientProperty("hide", t);
           }

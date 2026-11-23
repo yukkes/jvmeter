@@ -71,7 +71,7 @@ final class AxisChart extends JComponent {
     this.s = s;
     this.vbW = vbW;
     this.vbH = vbH;
-    this.ymax = ymax;
+    this.ymax = Math.max(1, ymax);
     this.x0 = x0;
     this.x1 = x1;
     this.pad = pad;
@@ -103,7 +103,7 @@ final class AxisChart extends JComponent {
 
   /** the time under x, whole seconds; After is limited to after Before */
   double pickTime(double x) {
-    double f = Math.min(1, Math.max(0, (x - (px - 1)) / (pw + 1)));
+    double f = pw > 0 ? Math.min(1, Math.max(0, (x - (px - 1)) / (pw + 1))) : 0;
     double t = Math.round(x0 + f * (x1 - x0));
     if (pickMin != null) {
       t = Math.max(t, pickMin + 1);
@@ -151,6 +151,13 @@ final class AxisChart extends JComponent {
     return new Dimension(0, pad[0] + 18 + (int) vbH + 1 + (gcBelow() ? 24 : 26) + 16 + pad[2]);
   }
 
+  private int laidOutW = -1;
+
+  @Override
+  public javax.swing.JToolTip createToolTip() {
+    return Ui.plain(super.createToolTip());
+  }
+
   @Override
   public void doLayout() {
     yw = 38;
@@ -161,6 +168,7 @@ final class AxisChart extends JComponent {
     py = pad[0] + 18;
     pw = getWidth() - pad[1] - px;
     ph = vbH;
+    laidOutW = getWidth();
   }
 
   /**
@@ -207,7 +215,9 @@ final class AxisChart extends JComponent {
 
   @Override
   protected void paintComponent(Graphics g0) {
-    doLayout();
+    if (laidOutW != getWidth()) {
+      doLayout();
+    }
     Graphics2D g = Theme.hints((Graphics2D) g0.create());
     Color muted = Theme.muted();
     // y title and labels
@@ -330,8 +340,9 @@ final class AxisChart extends JComponent {
         String l = pickLabel + " " + Fmt.tod(s.startMs, hoverT);
         Font lf = Theme.sans(11, 400);
         double lh = normalLh(11), tw = width(lf, l) + 10;
-        g.fill(new RoundRectangle2D.Double(lx + 4, py - 2, tw, lh, 6, 6));
-        text(g, l, lf, Theme.onBad(), lx + 9, py - 2, lh);
+        double bx = lx + 4 + tw > px + pw ? Math.max(px, lx - tw - 4) : lx + 4;
+        g.fill(new RoundRectangle2D.Double(bx, py - 2, tw, lh, 6, 6));
+        text(g, l, lf, Theme.onBad(), bx + 5, py - 2, lh);
       }
     }
     g.dispose();

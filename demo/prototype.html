@@ -1264,7 +1264,7 @@ function detail() {
   // time breakdown: Self + top 3 callees + others
   const parts = [{ label: "Self", ms: m.self, self: true }, ...m.callees.slice(0, 3).map(c => ({ label: shortName(c.name), name: c.name, ms: c.ms }))];
   const rest = m.total - parts.reduce((a, p) => a + p.ms, 0);
-  if (rest > m.total * 0.005) parts.push({ label: `${m.callees.length - 3} others`, ms: rest });
+  if (m.callees.length > 3 && rest > m.total * 0.005) parts.push({ label: `${m.callees.length - 3} others`, ms: rest });
   const COLORS = ["var(--bar-self)", "var(--accent)", "var(--io)", "var(--wait)", "var(--muted)"];
   const bar = parts.map((p, k) => `<i style="width:${(p.ms / m.total * 100).toFixed(2)}%;background:${COLORS[k]}" title="${esc(p.label)}"></i>`).join("");
   const row = (dot, label, ms, base, link) => `<li${link ? ` class="pick" data-hot="${esc(link)}" tabindex="0" title="${esc(link)}"` : ""}>

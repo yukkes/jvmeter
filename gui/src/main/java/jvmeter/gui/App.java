@@ -190,17 +190,30 @@ final class App extends JComponent {
     query.setFont(Theme.sans(13, 400));
     query.setPreferredSize(new Dimension(180, 20));
     query.getAccessibleContext().setAccessibleName("Search methods");
+    javax.swing.Timer searchDebounce =
+        new javax.swing.Timer(
+            120,
+            e -> {
+              render();
+              query.requestFocusInWindow();
+            });
+    searchDebounce.setRepeats(false);
     query
         .getDocument()
         .addDocumentListener(
             new javax.swing.event.DocumentListener() {
               void changed() {
                 state.q = query.getText();
-                SwingUtilities.invokeLater(
-                    () -> {
-                      render();
-                      query.requestFocusInWindow();
-                    });
+                if (settingQuery) {
+                  searchDebounce.stop();
+                  SwingUtilities.invokeLater(
+                      () -> {
+                        render();
+                        query.requestFocusInWindow();
+                      });
+                } else {
+                  searchDebounce.restart();
+                }
               }
 
               @Override
@@ -325,6 +338,8 @@ final class App extends JComponent {
 
   // ---------- a live JVM (docs/targets.md) ----------
 
+  private static volatile Path cachedAgentJar;
+
   /**
    * the agent jar the GUI runs and loads: bundled in its jar (copied to ~/.jvmeter),
    * -Djvmeter.agentJar, or the build's
@@ -334,12 +349,18 @@ final class App extends JComponent {
     if (p != null) {
       return Path.of(p);
     }
+    Path cached = cachedAgentJar;
+    if (cached != null && Files.exists(cached)) {
+      return cached;
+    }
     try (InputStream in = App.class.getResourceAsStream("jvmeter-agent.jar")) {
       if (in != null) {
-        return Connector.localJar(in.readAllBytes());
+        Path f = Connector.localJar(in.readAllBytes());
+        cachedAgentJar = f;
+        return f;
       }
     } catch (IOException e) {
-      // the build's jar below
+      throw new java.io.UncheckedIOException("Could not extract the bundled agent jar", e);
     }
     Path dev = Path.of("agent", "target", Targets.JAR);
     return Files.exists(dev)
@@ -410,6 +431,7 @@ final class App extends JComponent {
       Live.Message m) {
     if (m.type.equals("error") && conn == connecting) {
       connecting = null;
+      from.close();
       failed.accept(m.message); // e.g. another jvmeter is connected
       return;
     }
@@ -962,8 +984,15 @@ final class App extends JComponent {
     return false; // the picking glass overlaps the other children
   }
 
+  private boolean settingQuery;
+
   void setQuery(String q) {
-    query.setText(q);
+    settingQuery = true;
+    try {
+      query.setText(q);
+    } finally {
+      settingQuery = false;
+    }
   }
 
   @Override

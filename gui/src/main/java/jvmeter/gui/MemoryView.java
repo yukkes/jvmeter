@@ -398,11 +398,15 @@ final class MemoryView {
             "content_copy",
             "ok".equals(st.copied) ? "Copied" : "Copy GC log",
             () -> {
-              java.awt.Toolkit.getDefaultToolkit()
-                  .getSystemClipboard()
-                  .setContents(new StringSelection(GcAnalysis.gcLog(s.gc)), null);
-              st.copied = "ok";
-              app.render();
+              try {
+                java.awt.Toolkit.getDefaultToolkit()
+                    .getSystemClipboard()
+                    .setContents(new StringSelection(GcAnalysis.gcLog(s.gc)), null);
+                st.copied = "ok";
+                app.render();
+              } catch (RuntimeException e) {
+                app.error("Could not copy to the clipboard: " + e.getMessage());
+              }
             });
     copy.setToolTipText("Unified logging format (-Xlog:gc), ready to paste into GCeasy / GCViewer");
     root.add(
@@ -776,8 +780,8 @@ final class MemoryView {
           x.site,
           Table.method(x.site, null),
           Table.text(x.cls, Table.TD, Theme::fg),
-          Table.meterNum(x.mb / max, Findings.sizeText(x.mb)),
-          Table.num(Fmt.fixed(x.mb / total * 100, 1) + " %"));
+          Table.meterNum(max > 0 ? x.mb / max : 0, Findings.sizeText(x.mb)),
+          Table.num(Fmt.fixed(total > 0 ? x.mb / total * 100 : 0, 1) + " %"));
     }
     return p.with(t);
   }
@@ -796,7 +800,9 @@ final class MemoryView {
       };
       String[] names = {"Young", "Old", "Metaspace"};
       for (int i = 0; i < 3; i++) {
-        double peak = g[i][0], alloc = g[i][1], pc = Math.min(100, peak / alloc * 100);
+        double peak = g[i][0],
+            alloc = g[i][1],
+            pc = alloc > 0 ? Math.min(100, peak / alloc * 100) : 0;
         Box head = new Box(Box.ROW);
         head.add(grow(txt(names[i], Theme.sans(13, 700), Theme::fg, 20)));
         head.add(

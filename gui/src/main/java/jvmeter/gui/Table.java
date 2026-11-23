@@ -62,6 +62,9 @@ final class Table extends JComponent implements Scrollable {
   /** auto table layout (the GC causes table) instead of fixed with fitted numeric columns */
   boolean auto;
 
+  private double cachedW = -1;
+  private double[] cachedXs;
+
   @Override
   public javax.swing.JToolTip createToolTip() {
     return Ui.plain(super.createToolTip());
@@ -130,12 +133,14 @@ final class Table extends JComponent implements Scrollable {
 
   Table col(String key, String label, boolean left) {
     cols.add(new Col(key, label, left));
+    cachedXs = null;
     return this;
   }
 
   Table row(String tip, Cell... cells) {
     rows.add(cells);
     tips.add(tip);
+    cachedXs = null;
     return this;
   }
 
@@ -154,6 +159,9 @@ final class Table extends JComponent implements Scrollable {
 
   /** column x positions [x0, x1, ..., xn] for the table width w */
   double[] xs(double w) {
+    if (cachedXs != null && cachedW == w) {
+      return cachedXs;
+    }
     int n = cols.size();
     double[] cw = new double[n];
     if (auto) {
@@ -178,6 +186,8 @@ final class Table extends JComponent implements Scrollable {
     for (int k = 0; k < n; k++) {
       x[k + 1] = x[k] + cw[k];
     }
+    cachedW = w;
+    cachedXs = x;
     return x;
   }
 

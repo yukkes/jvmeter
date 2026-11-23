@@ -10,9 +10,9 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.TextAttribute;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Colors and fonts of demo/prototype.html (its CSS variables), light and dark. */
 final class Theme {
@@ -128,7 +128,7 @@ final class Theme {
   private static final Font[] SANS = {
     load("Inter-Regular.otf"), load("Inter-Medium.otf"), load("Inter-Bold.otf")
   };
-  private static final Map<String, Font> CACHE = new HashMap<>();
+  private static final Map<String, Font> CACHE = new ConcurrentHashMap<>();
 
   private static Font load(String file) {
     try (InputStream in =
@@ -151,7 +151,8 @@ final class Theme {
   }
 
   private static final java.util.Set<Font> NUM =
-      java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+      java.util.Collections.synchronizedSet(
+          java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
 
   /**
    * f with tabular figures, for numbers (the prototype's .num, font-variant-numeric: tabular-nums)
