@@ -84,6 +84,7 @@ Download the app for your OS from [Releases](https://github.com/yukkes/jvmeter/r
 | `jvmeter-<version>-windows-x64.zip` | `jvmeter\jvmeter.exe` |
 | `jvmeter-<version>-macos-arm64.zip` | `jvmeter.app` |
 | `jvmeter-<version>-linux-x64.tar.gz` | `jvmeter/bin/jvmeter` |
+| `jvmeter-gui.jar` | `java -jar jvmeter-gui.jar` (any OS / arch with Java 17+) |
 
 The apps are not signed: on macOS, allow jvmeter in **System Settings › Privacy & Security** the first time it is blocked; on Windows, choose **More info › Run anyway**.
 
@@ -102,7 +103,7 @@ The apps are not signed: on macOS, allow jvmeter in **System Settings › Privac
 ### 2. Record from startup with the agent
 
 To profile a process from its start to its exit, such as a batch job, add the agent to the JVM's options.
-The agent jar and the demo apps are not in the release: [build them from source](#building-from-source).
+Download `jvmeter-agent.jar` from [Releases](https://github.com/yukkes/jvmeter/releases) (or [build from source](#building-from-source), which also builds the demo apps).
 
 ```bash
 java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
@@ -186,7 +187,7 @@ Run time against no profiler (1.00×), on JDK 25, with jvmeter attached to a run
 
 ### The agent jar on the command line
 
-JVMs can be listed and attached to without the GUI, with the agent jar [built from source](#building-from-source).
+JVMs can be listed and attached to without the GUI, with `jvmeter-agent.jar` from [Releases](https://github.com/yukkes/jvmeter/releases) or [built from source](#building-from-source).
 
 ```bash
 # the JVMs running as this user (like jps -v)

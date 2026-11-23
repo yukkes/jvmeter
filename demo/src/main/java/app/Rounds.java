@@ -1,6 +1,8 @@
 package app;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -8,9 +10,14 @@ import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -120,8 +127,9 @@ public class Rounds {
     }
     phase("attached, not recording", n);
     try (Socket s = connect(Integer.parseInt(port.group(1)))) {
+      handshake(s, token.group(1));
       Writer w = new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8);
-      w.write(token.group(1) + "\n{\"cmd\":\"start\",\"include\":\"app\"}\n");
+      w.write("{\"cmd\":\"start\",\"include\":\"app\"}\n");
       w.flush();
       Thread drain =
           new Thread(
@@ -137,6 +145,38 @@ public class Rounds {
       phase("recording", n);
     }
     phase("disconnected", n);
+  }
+
+  /** HMAC-SHA256 challenge-response handshake (same protocol as jvmeter.core.Live) */
+  static void handshake(Socket s, String token) throws Exception {
+    byte[] nonceBytes = new byte[16];
+    new SecureRandom().nextBytes(nonceBytes);
+    String ours = HexFormat.of().formatHex(nonceBytes);
+    OutputStream out = s.getOutputStream();
+    out.write((ours + "\n").getBytes(StandardCharsets.UTF_8));
+    out.flush();
+    BufferedReader in =
+        new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
+    String reply = in.readLine();
+    String[] parts = reply == null ? new String[0] : reply.trim().split(" ");
+    if (parts.length != 2
+        || !MessageDigest.isEqual(
+            parts[0].getBytes(StandardCharsets.UTF_8),
+            proof(token, "agent", ours).getBytes(StandardCharsets.UTF_8))) {
+      throw new IOException("agent handshake failed: " + reply);
+    }
+    out.write((proof(token, "gui", parts[1]) + "\n").getBytes(StandardCharsets.UTF_8));
+    out.flush();
+    if (in.readLine() == null) {
+      throw new IOException("agent closed before hello");
+    }
+  }
+
+  private static String proof(String token, String side, String nonce) throws Exception {
+    Mac mac = Mac.getInstance("HmacSHA256");
+    mac.init(new SecretKeySpec(token.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+    return HexFormat.of()
+        .formatHex(mac.doFinal((side + " " + nonce).getBytes(StandardCharsets.UTF_8)));
   }
 
   /** the agent listens on both loopback addresses; some systems accept only one of them */

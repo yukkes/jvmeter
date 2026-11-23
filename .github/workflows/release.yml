@@ -1,6 +1,6 @@
 # The only workflow GitHub runs; run Qodana locally first (AGENTS.md):
 # a tag such as v1.0.0 builds, tests and publishes a Release with the GUI as an app image with its own Java runtime
-# for Linux, Windows and macOS (gui/app-image.sh), and SHA256SUMS. CI runs locally with act (.github/act).
+# for Linux, Windows and macOS (gui/app-image.sh), standalone agent/GUI jars, and SHA256SUMS. CI runs locally with act (.github/act).
 name: Release
 on:
   push:
@@ -63,6 +63,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: dist
         run: |
-          sha256sum *.zip *.tar.gz > SHA256SUMS
+          mv agent/target/jvmeter-agent.jar gui/target/jvmeter-gui.jar .
+          sha256sum *.zip *.tar.gz *.jar > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
-            *.zip *.tar.gz SHA256SUMS
+            *.zip *.tar.gz *.jar SHA256SUMS

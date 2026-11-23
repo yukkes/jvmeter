@@ -14,7 +14,8 @@ SHA256 = "9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e"
 UNICODES = "U+0020-007E,U+00A0-017F,U+0370-03FF,U+2000-206F,U+2190-21FF,U+2212,U+2264,U+2265,U+F000-F3FF"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src/main/resources/jvmeter/gui/fonts")
 
-data = urllib.request.urlopen(URL).read()
+with urllib.request.urlopen(URL, timeout=30) as resp:
+    data = resp.read()
 assert hashlib.sha256(data).hexdigest() == SHA256, "unexpected download"
 z = zipfile.ZipFile(io.BytesIO(data))
 with open(os.path.join(OUT, "OFL.txt"), "wb") as f:
