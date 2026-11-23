@@ -792,7 +792,7 @@ final class MemoryView {
     list.minCol = 180;
     list.rowGap = 14;
     list.stretch = false;
-    if (a.gen == null || a.gen.youngMB == 0) {
+    if (a.gen == null || (a.gen.youngMB == 0 && a.gen.oldMB == 0)) {
       list.add(txt("No gc.generations", Theme.sans(13, 400), Theme::muted, 20));
     } else {
       double[][] g = {

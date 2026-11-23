@@ -274,7 +274,7 @@ final class CpuView {
                   app.state.expanded.add(n.id);
                 }
               } else {
-                app.state.sel = n.parent != null ? n.name : null;
+                select(n);
               }
               app.render();
             }
@@ -296,6 +296,79 @@ final class CpuView {
           };
       addMouseListener(m);
       addMouseMotionListener(m);
+      getInputMap()
+          .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0), "down");
+      getInputMap().put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0), "up");
+      getInputMap()
+          .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, 0), "expand");
+      getInputMap()
+          .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, 0), "collapse");
+      getInputMap()
+          .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, 0), "toggle");
+      getActionMap().put("down", moveRow(1));
+      getActionMap().put("up", moveRow(-1));
+      getActionMap().put("expand", toggleRow(Boolean.TRUE));
+      getActionMap().put("collapse", toggleRow(Boolean.FALSE));
+      getActionMap().put("toggle", toggleRow(null));
+    }
+
+    private int selectedRow() {
+      int first = -1;
+      for (int i = 0; i < nodes.size(); i++) {
+        CallTree.Node n = nodes.get(i);
+        boolean sel = n.parent == null ? app.state.sel == null : n.name.equals(app.state.sel);
+        if (sel && n.id == app.state.treeRow) {
+          return i;
+        }
+        if (sel && n.parent != null && first < 0) {
+          first = i;
+        }
+      }
+      return first;
+    }
+
+    private void select(CallTree.Node n) {
+      app.state.sel = n.parent != null ? n.name : null;
+      app.state.treeRow = n.id;
+    }
+
+    private javax.swing.AbstractAction moveRow(int d) {
+      return new javax.swing.AbstractAction() {
+        @Override
+        public void actionPerformed(java.awt.event.ActionEvent e) {
+          if (nodes.isEmpty()) {
+            return;
+          }
+          int cur = selectedRow();
+          int next = cur < 0 ? 0 : Math.max(0, Math.min(nodes.size() - 1, cur + d));
+          select(nodes.get(next));
+          app.render();
+        }
+      };
+    }
+
+    private javax.swing.AbstractAction toggleRow(Boolean open) {
+      return new javax.swing.AbstractAction() {
+        @Override
+        public void actionPerformed(java.awt.event.ActionEvent e) {
+          int cur = selectedRow();
+          if (cur < 0) {
+            return;
+          }
+          CallTree.Node n = nodes.get(cur);
+          if (n.children.isEmpty()) {
+            return;
+          }
+          if (Boolean.TRUE.equals(open)) {
+            app.state.expanded.add(n.id);
+          } else if (Boolean.FALSE.equals(open)) {
+            app.state.expanded.remove(n.id);
+          } else if (!app.state.expanded.remove(n.id)) {
+            app.state.expanded.add(n.id);
+          }
+          app.render();
+        }
+      };
     }
 
     int rowAt(int y) {

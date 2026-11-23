@@ -52,6 +52,10 @@ final class App extends JComponent {
         tsortKey = "total",
         tsortDir = "desc";
     String sel;
+
+    /** the call tree row (node id) last chosen: a name is on several rows when it recurses */
+    int treeRow = -1;
+
     Set<Integer> expanded = new HashSet<>();
     String q = "";
     Session.ClassSnap snapBefore, snapAfter;
@@ -185,6 +189,32 @@ final class App extends JComponent {
                 }
               }
             });
+    int mod =
+        java.awt.GraphicsEnvironment.isHeadless()
+            ? java.awt.event.InputEvent.CTRL_DOWN_MASK
+            : java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+    bindKey(KeyStroke.getKeyStroke(KeyEvent.VK_O, mod), "open", this::openSnapshot);
+    bindKey(
+        KeyStroke.getKeyStroke(KeyEvent.VK_F, mod),
+        "find",
+        () -> {
+          if (s != null) {
+            go("cpu");
+            query.requestFocusInWindow();
+          }
+        });
+    String[] navKeys = {"overview", "cpu", "memory", "threads"};
+    for (int i = 0; i < navKeys.length; i++) {
+      String view = navKeys[i];
+      bindKey(
+          KeyStroke.getKeyStroke(KeyEvent.VK_1 + i, java.awt.event.InputEvent.ALT_DOWN_MASK),
+          "view-" + view,
+          () -> {
+            if (s != null) {
+              go(view);
+            }
+          });
+    }
     query.setBorder(javax.swing.BorderFactory.createEmptyBorder());
     query.setOpaque(false);
     query.setFont(Theme.sans(13, 400));
@@ -234,6 +264,19 @@ final class App extends JComponent {
     } else {
       render();
     }
+  }
+
+  private void bindKey(KeyStroke ks, String name, Runnable action) {
+    getInputMap(WHEN_IN_FOCUSED_WINDOW).put(ks, name);
+    getActionMap()
+        .put(
+            name,
+            new javax.swing.AbstractAction() {
+              @Override
+              public void actionPerformed(java.awt.event.ActionEvent e) {
+                action.run();
+              }
+            });
   }
 
   /** .search: icon and input in a bordered box */
