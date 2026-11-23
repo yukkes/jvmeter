@@ -22,7 +22,7 @@ We adopt GCeasy's **metrics and rules**, not the **service** itself.
 | GC causes | Yes (count, total, average, max) | `jdk.GarbageCollection.name`, `cause` |
 | Heap before / after GC | Yes. A regression line over the after-GC values; its slope flags leaks | `jdk.GCHeapSummary` (`when` = Before GC / After GC) |
 | Generation sizes (committed / peak) | Yes | committed: the largest seen per memory pool (`MemoryPoolMXBean`: Eden + Survivor, Old, Metaspace); peak: `jdk.GCHeapSummary`, `jdk.G1HeapSummary`, `jdk.MetaspaceSummary` |
-| Allocation / promotion rate | Yes | deltas of `jdk.ThreadAllocationStatistics` / growth of Old after GC |
+| Allocation / promotion rate | Yes | heap growth between GCs from `jdk.GCHeapSummary` (`beforeMB - prev.afterMB`) / growth of Old after GC |
 | Problem detection | Yes, **rule-based** (table below) | combinations of the above |
 | AI / ML advice, PDF, comparing multiple logs | No | — |
 | Uploading logs for analysis | No. Use "Copy GC log" and paste it manually instead | `-Xlog:gc*` |

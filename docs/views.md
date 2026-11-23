@@ -5,15 +5,15 @@ It loads Inter from Google Fonts (offline it falls back to the system font); the
 content stops at 1600 px.
 
 **Start Center.** Like JProfiler, both the prototype and the GUI open the Start Center first (the GUI does not when it is given a snapshot file).
-On the left: Local, SSH, Kubernetes, Open snapshot and Sample data (a fictional order service).
+On the left: Local, SSH, Kubernetes, Recordings and Sample data (a fictional order service).
 It opens where it left off: the kind of place used last, with its fields filled in, listing the JVMs there at once and selecting
 the main class connected to last time (matched by class, as the pid has usually changed), so Connect is one click. When no JVM or several
 run that class, the list says so. Only Local and places used before list on their own; elsewhere nothing runs until List JVMs.
 The SSH Host field suggests the hosts used before and the Host entries of `~/.ssh/config`; a Kubernetes pod that a rollout replaced
 falls back to a pod of the same Deployment. The last connection is kept in the browser's storage (the GUI: its preferences).
 There is no list of recent sessions: a remembered pod name goes stale with every rollout, and a connection has nothing else worth saving.
-Local / SSH / Kubernetes take where the JVM runs, list its JVMs (with an agent that is already running), and attach or connect;
-the commands jvmeter runs and the startup option are shown below ([`targets.md`](targets.md)).
+Local / SSH / Kubernetes take where the JVM runs, list its JVMs (with an agent that is already running), and attach or connect ([`targets.md`](targets.md));
+notes under Attach and connect explain any missing JVM options.
 Closed without a choice, the window shows "No JVM connected" with the same three ways in; the views stay disabled.
 Below the list, **Count calls in** takes the packages whose calls are counted (the main class's package, or what was used for
 that main class last time); CPU time is sampled in every method either way.
@@ -42,8 +42,7 @@ roaming profile does not copy at every logon; the GUI shows the full path there)
 another session opens, and a line at the bottom says where, with **Show in folder**; it stays until closed or the next recording
 starts. NAME is the start time, the main class, where the JVM ran and its pid (`20261004-143000-OrderServiceApp-localhost-34567`).
 The Start Center's **Recordings** lists them, newest first. Frameless icon buttons open a recording (a file dialog in
-`~/.jvmeter/recordings`) and switch between light and dark mode (the choice is remembered in the browser; by default it follows
-the OS). On the sample, a "Sample data" label (a Material 3 tonal container: filled, no outline, not a button) says it is not a real recording.
+`~/.jvmeter/recordings`) and switch between light and dark mode (the choice is remembered; the prototype defaults to the OS theme, the GUI defaults to light). On the sample, a "Sample data" label (a Material 3 tonal container: filled, no outline, not a button) says it is not a real recording.
 Calls are counted exactly by instrumentation and time comes from JFR sampling ([`design.md`](design.md)); there is no mode switch.
 Methods seen only in samples (outside the counted packages) have no call count: Calls and Average show "—".
 On the CPU view, the right panel shows the selected method's Self / Total / calls / per-call time, its time breakdown
@@ -69,7 +68,7 @@ or they are not essential for a first investigation.
 {
   "format": "jvmeter-snapshot/1",
   "about": [ "what the fields and units mean" ],
-  "summary": { "cpu": { "hotSpotsBySelfTime": [], "hottestPath": [] }, "gc": {}, "threads": {}, "memory": {}, "findings": [] },
+  "summary": { "findings": [], "cpu": { "hotSpotsBySelfTime": [], "hottestPath": [] }, "gc": {}, "threads": {}, "memory": {} },
   "target": { "name": "app.Fib", "pid": 12345, "jvm": "OpenJDK 25", "include": "app" },
   "startedAt": "2026-10-04T14:30:00+09:00",
   "durationSec": 120,

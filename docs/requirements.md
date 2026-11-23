@@ -10,8 +10,8 @@ with every field of the format. The sample is a fixed snapshot (the prototype si
 | # | Feature | Needs | Status | Notes |
 |---|---|---|---|---|
 | C1 | Start Center at startup, resumes where it left off (kind, fields, main class) | GUI prefs | Done | `StartCenter.Last` |
-| C2 | Command preview for each kind (list, copy jar, attach, port forward) | `Targets.commands` | Done | `TargetsTest` checks it against the prototype |
-| C3 | Per-JVM attach notes (JEP 451, `DebugNonSafepoints`) and "Prepare a JVM" | JDK version and options per JVM | Done | `list` reports them; `JDK_JAVA_OPTIONS` in a Deployment (in `JAVA_TOOL_OPTIONS`, JDK 21+ still warns) |
+| C2 | Target commands (list, copy jar, attach, port forward) | `Connector` | Done | Executed via local `ProcessBuilder`, `ssh`, or `kubectl` |
+| C3 | Per-JVM attach notes (JEP 451, `DebugNonSafepoints`) | JDK version and options per JVM | Done | `Targets.attachNotes` (`TargetsTest` checks it against the prototype); `list` reports them; `JDK_JAVA_OPTIONS` in a Deployment (in `JAVA_TOOL_OPTIONS`, JDK 21+ still warns) |
 | C4 | Local: list JVMs (pid, main class, JDK, options, running agent's port) | agent `list` (jvmstat, like `jps -v`) | Done | `Launcher.list`, `Connector.list` |
 | C5 | Attach and connect | agent `attach PID` with the target's own java; prints `{port, token}` | Done | Local; the target's java from `ProcessHandle.info()` |
 | C6 | Connect to an agent that is already running | agent server on loopback with a token; token file for `list` | Done | `Server`, `AgentFile`, `AgentClient` |
@@ -129,4 +129,4 @@ with every field of the format. The sample is a fixed snapshot (the prototype si
 - Attaching appends to the boot class path, so the JVM logs once that class data sharing now covers boot classes only.
 - Run as needs sudo without a password for that user (`sudo -n`); an unknown SSH host key must be accepted once with `ssh HOST`.
 - The rest is in [`targets.md`](targets.md) (Limits): distroless images, jlink runtimes without `jdk.attach`, Windows over SSH,
-  one JVM per window.
+  one JVM per window, virtual threads (JDK 21+) omitted from `ThreadMXBean` thread dumps.
