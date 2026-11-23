@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import jvmeter.core.ClassStat;
-import jvmeter.core.GcEvent;
 import jvmeter.core.Live;
 import jvmeter.core.Retention;
 import jvmeter.core.Session;
@@ -70,7 +69,8 @@ final class Recording {
    */
   final Consumer<Live.Message> sink;
 
-  private double sentGcT = -1;
+  private final java.util.Set<Long> sentGcs = new java.util.HashSet<>();
+  private boolean sampleWarned;
 
   /** include: the counted packages, the application's code where waits are placed */
   Recording(Duration period, int histogramEvery, String include, Consumer<Live.Message> sink) {
@@ -105,6 +105,10 @@ final class Recording {
       }
     } catch (Throwable e) {
       // a failed sample must not stop the next ones
+      if (!sampleWarned || e instanceof Error) {
+        sampleWarned = true;
+        System.err.println("[jvmeter] sampler error: " + e);
+      }
     }
   }
 
@@ -120,15 +124,7 @@ final class Recording {
     m.cpu = Telemetry.last(tel.cpu);
     m.heap = Telemetry.last(tel.heap);
     m.threads = Telemetry.last(tel.threads);
-    m.gc = new ArrayList<>();
-    for (GcEvent e : jfr.gcEvents()) {
-      if (e.t > sentGcT) {
-        m.gc.add(e);
-      }
-    }
-    if (!m.gc.isEmpty()) {
-      sentGcT = m.gc.get(m.gc.size() - 1).t;
-    }
+    m.gc = jfr.gcEvents(sentGcs);
     m.states = states;
     return m;
   }
@@ -138,13 +134,14 @@ final class Recording {
     Live.Message m = new Live.Message("cpu");
     m.tree = jfr.tree();
     m.methods = methods();
+    m.periodMs = jfr.periodMs() != 1 ? jfr.periodMs() : null;
     m.stacks = new java.util.LinkedHashMap<>();
     for (Snapshot.RawThread r : threads.threads()) {
       m.stacks.put(r.name, r.stack);
     }
     m.waits = threads.waits();
     m.allocations = jfr.allocations();
-    m.generations = gen.youngMB > 0 ? copy(gen) : null;
+    m.generations = gen.youngMB > 0 || gen.oldMB > 0 ? copy(gen) : null;
     return m;
   }
 
@@ -170,16 +167,24 @@ final class Recording {
   private synchronized void generations() {
     double young = 0, old = 0;
     for (MemoryPoolMXBean p : ManagementFactory.getMemoryPoolMXBeans()) {
-      double mb = p.getUsage().getCommitted() / 1048576.0;
+      java.lang.management.MemoryUsage u = p.getUsage();
+      if (u == null) {
+        continue;
+      }
+      double mb = u.getCommitted() / 1048576.0;
       String n = p.getName();
       if (p.getType() == MemoryType.HEAP
           && (n.contains("Eden") || n.contains("Survivor") || n.contains("Young"))) {
         young += mb;
-      } else if (p.getType() == MemoryType.HEAP && (n.contains("Old") || n.contains("Tenured"))) {
+      } else if (p.getType() == MemoryType.HEAP
+          && (n.contains("Old")
+              || n.contains("Tenured")
+              || n.contains("ZHeap")
+              || n.contains("Shenandoah"))) {
         old += mb;
       } else if (n.equals("Metaspace")) {
         gen.metaspaceMB = Math.max(gen.metaspaceMB, Math.round(mb * 10) / 10.0);
-        long max = p.getUsage().getMax();
+        long max = u.getMax();
         gen.metaspaceMaxMB = max > 0 ? (double) Math.round(max / 1048576.0) : null;
       }
     }
@@ -213,6 +218,11 @@ final class Recording {
 
   void stop() {
     timer.shutdownNow();
+    try {
+      timer.awaitTermination(2, TimeUnit.SECONDS);
+    } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
+    }
     jfr.stop();
   }
 
@@ -243,6 +253,7 @@ final class Recording {
     s.cpu = new Snapshot.Cpu();
     s.cpu.tree = jfr.tree();
     s.cpu.methods = methods();
+    s.cpu.periodMs = jfr.periodMs() != 1 ? jfr.periodMs() : null;
     s.memory = new Snapshot.Memory();
     s.memory.heapMaxMB = (double) (Runtime.getRuntime().maxMemory() / (1024 * 1024));
     s.memory.xmsMB =
@@ -258,7 +269,7 @@ final class Recording {
     // "G1 Young Generation" -> G1, "PS Scavenge" -> Parallel, "Copy" -> Serial, "ZGC Cycles" -> ZGC
     s.gc.collector = collector();
     s.gc.heapMaxMB = s.memory.heapMaxMB;
-    s.gc.generations = gen.youngMB > 0 ? copy(gen) : null;
+    s.gc.generations = gen.youngMB > 0 || gen.oldMB > 0 ? copy(gen) : null;
     s.gc.events = jfr.gcEvents();
     return s;
   }
@@ -266,7 +277,12 @@ final class Recording {
   /** exact counts per method; overloads share a name, as in the call tree */
   private List<Snapshot.MethodCalls> methods() {
     Map<String, Long> byName = new TreeMap<>();
-    calls().forEach((k, v) -> byName.merge(k.substring(0, k.indexOf('(')), v, Long::sum));
+    calls()
+        .forEach(
+            (k, v) -> {
+              int paren = k.indexOf('(');
+              byName.merge(paren >= 0 ? k.substring(0, paren) : k, v, Long::sum);
+            });
     byName.values().removeIf(v -> v == 0);
     List<Snapshot.MethodCalls> l = new ArrayList<>();
     byName.forEach(
@@ -283,7 +299,11 @@ final class Recording {
    * "G1 Young Generation" -> G1, "PS Scavenge" -> Parallel, "Copy" -> Serial, "ZGC Cycles" -> ZGC
    */
   static String collector() {
-    String gc = ManagementFactory.getGarbageCollectorMXBeans().get(0).getName().split(" ")[0];
+    var gcs = ManagementFactory.getGarbageCollectorMXBeans();
+    if (gcs.isEmpty()) {
+      return "?";
+    }
+    String gc = gcs.get(0).getName().split(" ")[0];
     return gc.equals("PS") ? "Parallel" : gc.equals("Copy") ? "Serial" : gc;
   }
 

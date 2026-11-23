@@ -40,6 +40,9 @@ import jvmeter.core.Snapshot;
 public final class JfrRecorder {
 
   private static final double MB = 1024 * 1024;
+  private static final int MAX_ALLOCATIONS = 10_000;
+  private static final int MAX_TREE_NODES = 50_000;
+  static final String TRUNCATED = "(more stacks: call tree node limit reached)";
 
   private final Duration period;
 
@@ -50,14 +53,14 @@ public final class JfrRecorder {
    * site + '\0' + class -> bytes, estimated from allocation samples (each weighs what its thread
    * allocated since the last one)
    */
-  private final Map<String, double[]> allocations = new HashMap<>();
+  private final Map<String, long[]> allocations = new HashMap<>();
 
   /** RecordedStackTrace -> the first frame in the application's code (else the top frame) */
   private final Map<RecordedStackTrace, String> sites = new IdentityHashMap<>();
 
   private final Instant start = Instant.now();
-  private final Map<String, long[]> samples = new HashMap<>(); // method -> [self, total]
   private final TreeNode root = new TreeNode("All threads");
+  private int treeNodes = 1;
   private final Map<Long, GcEvent> gcs = new LinkedHashMap<>(); // gcId -> event
   private final Map<Long, String> g1Types = new HashMap<>();
   private final Map<Long, Long> youngUsed =
@@ -143,12 +146,14 @@ public final class JfrRecorder {
     stream.onEvent(
         "jdk.GCHeapSummary",
         e -> {
-          GcEvent g = gc(e.getLong("gcId"));
-          double used = e.getLong("heapUsed") / MB;
-          if (before(e)) {
-            g.beforeMB = used;
-          } else {
-            g.afterMB = used;
+          synchronized (this) {
+            GcEvent g = gc(e.getLong("gcId"));
+            double used = e.getLong("heapUsed") / MB;
+            if (before(e)) {
+              g.beforeMB = used;
+            } else {
+              g.afterMB = used;
+            }
           }
         });
     stream.onEvent(
@@ -165,7 +170,9 @@ public final class JfrRecorder {
         "jdk.MetaspaceSummary",
         e -> {
           if (!before(e)) {
-            gc(e.getLong("gcId")).metaspaceMB = Fmt.round(e.getLong("metaspace.used") / MB, 1);
+            synchronized (this) {
+              gc(e.getLong("gcId")).metaspaceMB = Fmt.round(e.getLong("metaspace.used") / MB, 1);
+            }
           }
         });
     FlightRecorder.addPeriodicEvent(ChunkEnd.class, chunkEnd);
@@ -237,12 +244,16 @@ public final class JfrRecorder {
     return gcs.computeIfAbsent(id, k -> new GcEvent());
   }
 
-  private void gc(RecordedEvent e) {
+  private synchronized void gc(RecordedEvent e) {
     GcEvent g = gc(e.getLong("gcId"));
     String name = e.getString("name");
     g.t = Duration.between(start, e.getStartTime()).toNanos() / 1e9;
     g.name =
-        name.contains("Old") || name.contains("Full") || name.contains("MarkSweep")
+        name != null
+                && (name.contains("Old")
+                    || name.contains("Full")
+                    || name.contains("MarkSweep")
+                    || name.contains("Major"))
             ? "Full"
             : "Young";
     g.cause = e.getString("cause");
@@ -253,39 +264,32 @@ public final class JfrRecorder {
   }
 
   /**
-   * What a sample of one stack adds to: its top method's counters, each distinct method's (once,
-   * even if it recurses) and its call tree leaf. JFR shares one RecordedStackTrace per stack and
-   * one RecordedMethod per method within a chunk, so a stack seen before allocates nothing.
+   * Call tree leaf for a RecordedStackTrace. JFR shares one RecordedStackTrace per stack and one
+   * RecordedMethod per method within a chunk, so a stack seen before allocates nothing.
    */
-  private record Stack(long[] top, long[][] total, TreeNode leaf) {}
+  private final Map<RecordedStackTrace, TreeNode> stacks = new IdentityHashMap<>();
 
-  private final Map<RecordedStackTrace, Stack> stacks = new IdentityHashMap<>();
-
-  /** RecordedMethod -> {name, key} */
-  private final Map<RecordedMethod, String[]> methods = new IdentityHashMap<>();
+  /** RecordedMethod -> "pkg.Class.method" */
+  private final Map<RecordedMethod, String> methods = new IdentityHashMap<>();
 
   private synchronized void sample(RecordedEvent e) {
     RecordedStackTrace st = e.getStackTrace();
     if (st == null) {
       return;
     }
-    Stack s = stacks.get(st);
-    if (s == null) {
-      s = stack(st.getFrames());
-      if (s == null) {
+    TreeNode leaf = stacks.get(st);
+    if (leaf == null) {
+      leaf = stack(st.getFrames());
+      if (leaf == null) {
         return;
       }
       if (stacks.size() >= 20_000) { // new chunks bring new objects: keep the caches bounded
         stacks.clear();
         methods.clear();
       }
-      stacks.put(st, s);
+      stacks.put(st, leaf);
     }
-    s.top[0]++;
-    for (long[] t : s.total) {
-      t[1]++;
-    }
-    s.leaf.self++;
+    leaf.self++;
   }
 
   private synchronized void allocation(RecordedEvent e) {
@@ -302,7 +306,7 @@ public final class JfrRecorder {
       String top = null, mine = null;
       boolean agent = false;
       for (RecordedFrame f : frames) {
-        String n = methods.computeIfAbsent(f.getMethod(), m -> new String[] {name(m), key(m)})[0];
+        String n = methods.computeIfAbsent(f.getMethod(), JfrRecorder::name);
         top = top == null ? n : top;
         mine = mine == null && app.test(n) ? n : mine;
         agent |= n.startsWith("jvmeter.agent.");
@@ -318,11 +322,16 @@ public final class JfrRecorder {
     if (site.isEmpty()) {
       return;
     }
-    allocations
-            .computeIfAbsent(
-                site + '\0' + Histogram.name(e.getClass("objectClass").getName()),
-                k -> new double[1])[0] +=
-        e.getLong("weight");
+    String key = site + '\0' + Histogram.name(e.getClass("objectClass").getName());
+    long[] bytes = allocations.get(key);
+    if (bytes == null) {
+      if (allocations.size() >= MAX_ALLOCATIONS) {
+        return;
+      }
+      bytes = new long[1];
+      allocations.put(key, bytes);
+    }
+    bytes[0] += e.getLong("weight");
   }
 
   /** the 100 largest allocation sites and classes */
@@ -340,23 +349,28 @@ public final class JfrRecorder {
     return out.subList(0, Math.min(100, out.size()));
   }
 
-  private Stack stack(List<RecordedFrame> frames) {
+  private TreeNode stack(List<RecordedFrame> frames) {
     if (frames.isEmpty()) {
       return null;
     }
-    Set<long[]> total = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-    String[][] nk = new String[frames.size()][];
-    for (int i = 0; i < nk.length; i++) {
-      nk[i] =
-          methods.computeIfAbsent(frames.get(i).getMethod(), m -> new String[] {name(m), key(m)});
-      total.add(samples.computeIfAbsent(nk[i][1], k -> new long[2]));
-    }
     // call tree: from the bottom of the stack (thread root) to the top
     TreeNode n = root;
-    for (int i = nk.length - 1; i >= 0; i--) {
-      n = n.children.computeIfAbsent(nk[i][0], TreeNode::new);
+    for (int i = frames.size() - 1; i >= 0; i--) {
+      String name = methods.computeIfAbsent(frames.get(i).getMethod(), JfrRecorder::name);
+      TreeNode child = n.children.get(name);
+      if (child == null) {
+        if (treeNodes >= MAX_TREE_NODES) {
+          // cap tree memory on long recordings with many distinct stacks; the samples stay
+          // visible under this node, named so a reader sees the tree was cut
+          return n.children.computeIfAbsent(TRUNCATED, TreeNode::new);
+        }
+        child = new TreeNode(name);
+        n.children.put(name, child);
+        treeNodes++;
+      }
+      n = child;
     }
-    return new Stack(samples.get(nk[0][1]), total.toArray(new long[0][]), n);
+    return n;
   }
 
   /**
@@ -392,6 +406,10 @@ public final class JfrRecorder {
     return start;
   }
 
+  public long periodMs() {
+    return period.toMillis();
+  }
+
   /**
    * the call tree in ms; the agent's own frames (the +1 per call) are left out, they are profiling
    * overhead
@@ -412,34 +430,40 @@ public final class JfrRecorder {
     return n;
   }
 
-  /** complete GC events in time order */
+  /** complete GC events in time order (copies, so repeated calls never re-round stored values) */
   public synchronized List<GcEvent> gcEvents() {
+    return gcEvents(null);
+  }
+
+  /** complete GC events not yet in sent (adds their gcIds to sent when non-null), in time order */
+  synchronized List<GcEvent> gcEvents(Set<Long> sent) {
     List<GcEvent> out = new ArrayList<>();
     for (Map.Entry<Long, GcEvent> e : gcs.entrySet()) {
+      long id = e.getKey();
       GcEvent g = e.getValue();
-      if (g.name == null) {
-        continue; // heap summary without its GC event (cut off at the end)
+      if (g.name == null || (sent != null && sent.contains(id))) {
+        continue; // heap summary without its GC event (cut off at the end), or already sent
       }
-      if ("Mixed".equals(g1Types.get(e.getKey()))) {
-        g.name = "Mixed";
+      if (sent != null) {
+        sent.add(id);
       }
-      Long young = youngUsed.get(e.getKey());
+      GcEvent c = new GcEvent();
+      c.t = Fmt.round(g.t, 3);
+      c.name = "Mixed".equals(g1Types.get(id)) ? "Mixed" : g.name;
+      c.cause = g.cause;
+      c.pauseMs = Fmt.round(g.pauseMs, 2);
+      c.beforeMB = Fmt.round(g.beforeMB, 1);
+      c.afterMB = Fmt.round(g.afterMB, 1);
+      Long young = youngUsed.get(id);
       if (young != null) {
-        g.oldAfterMB = Fmt.round(g.afterMB - young / MB, 1);
+        c.oldAfterMB = Fmt.round(g.afterMB - young / MB, 1);
       }
-      g.beforeMB = Fmt.round(g.beforeMB, 1);
-      g.afterMB = Fmt.round(g.afterMB, 1);
-      g.t = Fmt.round(g.t, 3);
-      g.pauseMs = Fmt.round(g.pauseMs, 2);
-      out.add(g);
+      c.metaspaceMB = g.metaspaceMB;
+      c.manual = g.manual;
+      out.add(c);
     }
     out.sort((a, b) -> Double.compare(a.t, b.t));
     return out;
-  }
-
-  /** Same format as MethodRegistry: "app.Fib.fibRecursive(I)J" */
-  static String key(RecordedMethod m) {
-    return name(m) + m.getDescriptor();
   }
 
   /** "app.Fib.fibRecursive" (overloads share a name in the call tree) */

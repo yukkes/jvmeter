@@ -53,8 +53,11 @@ final class Server {
   private final java.util.concurrent.Semaphore unproved = new java.util.concurrent.Semaphore(8);
 
   static final long HANDSHAKE_MS = 10_000;
+  static final int MAX_COMMAND_LEN = 65_536;
+  private static final int SEND_QUEUE = 64;
+  private static final Live.Message DONE = new Live.Message("");
 
-  private Writer out;
+  private java.util.concurrent.BlockingQueue<Live.Message> queue;
   private Socket client;
 
   Server(int port) throws IOException {
@@ -67,12 +70,23 @@ final class Server {
       // IPv4 only
     }
     long pid = ProcessHandle.current().pid();
-    AgentFile.write(
-        pid,
-        jsonb()
-            .type(Object.class)
-            .map()
-            .toJson(Map.of("pid", pid, "port", this.port, "token", token)));
+    try {
+      AgentFile.write(
+          pid,
+          jsonb()
+              .type(Object.class)
+              .map()
+              .toJson(Map.of("pid", pid, "port", this.port, "token", token)));
+    } catch (IOException | RuntimeException e) {
+      for (ServerSocket ss : sockets) {
+        try {
+          ss.close();
+        } catch (IOException ignored) {
+          // best effort
+        }
+      }
+      throw e;
+    }
     Runtime.getRuntime()
         .addShutdownHook(new Thread(() -> AgentFile.delete(pid), "jvmeter-cleanup"));
     for (ServerSocket ss : sockets) {
@@ -126,25 +140,54 @@ final class Server {
       BufferedReader in =
           new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
       Writer w = new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8);
+      java.util.concurrent.BlockingQueue<Live.Message> q =
+          new java.util.concurrent.ArrayBlockingQueue<>(SEND_QUEUE);
       // one client at a time: a new one (it knows the token) replaces the previous one, which may
       // be gone without
       // the agent noticing (a GUI that crashed, an ssh tunnel that dropped)
       synchronized (this) {
+        if (queue != null) {
+          queue.clear();
+          queue.offer(DONE);
+        }
         if (client != null) {
           client.close();
         }
         client = s;
-        out = w;
+        queue = q;
       }
+      Thread sender =
+          new Thread(
+              () -> {
+                try {
+                  while (true) {
+                    Live.Message m = q.take();
+                    if (m == DONE) {
+                      return;
+                    }
+                    write(w, m);
+                  }
+                } catch (IOException | InterruptedException e) {
+                  try {
+                    s.close();
+                  } catch (IOException ignored) {
+                    // already closed
+                  }
+                }
+              },
+              "jvmeter-send");
+      sender.setDaemon(true);
+      sender.start();
       s.setSoTimeout(0);
       try {
         send(Agent.hello());
-        for (String line; (line = in.readLine()) != null; ) {
+        for (String line; (line = readLine(in)) != null; ) {
           Live.Command c;
           try {
             c = jsonb().type(Live.Command.class).fromJson(line);
           } catch (RuntimeException e) {
-            send(error("Not a command: " + line));
+            String shown = line.length() > 200 ? line.substring(0, 200) + "…" : line;
+            send(error("Not a command: " + shown));
             continue;
           }
           if (c != null && c.cmd != null) {
@@ -157,9 +200,12 @@ final class Server {
           current = client == s;
           if (current) {
             client = null;
-            out = null;
+            queue = null;
           }
         }
+        q.clear();
+        q.offer(DONE);
+        sender.interrupt();
         if (current) {
           Agent.disconnected();
         }
@@ -183,19 +229,49 @@ final class Server {
     return Live.proves(Live.line(s, deadline), token, "gui", ours);
   }
 
+  /** one command line of bounded length (null on EOF) */
+  static String readLine(BufferedReader in) throws IOException {
+    StringBuilder b = new StringBuilder();
+    int c;
+    while ((c = in.read()) != -1) {
+      if (c == '\n') {
+        if (b.length() > 0 && b.charAt(b.length() - 1) == '\r') {
+          b.setLength(b.length() - 1);
+        }
+        return b.toString();
+      }
+      if (b.length() >= MAX_COMMAND_LEN) {
+        throw new IOException("command line too long");
+      }
+      b.append((char) c);
+    }
+    return b.length() == 0 ? null : b.toString();
+  }
+
   static Live.Message error(String message) {
     Live.Message m = new Live.Message("error");
     m.message = message;
     return m;
   }
 
-  /** to the connected client, if any */
+  /** to the connected client, if any (non-blocking: never stalls the sampler) */
   synchronized void send(Live.Message m) {
-    if (out != null) {
+    if (queue == null) {
+      return;
+    }
+    if (queue.offer(m)) {
+      return;
+    }
+    if ("tick".equals(m.type)) {
+      return; // drop a tick when the client is behind
+    }
+    // make room for control / final messages by dropping a queued tick
+    queue.removeIf(x -> "tick".equals(x.type));
+    if (!queue.offer(m) && client != null) {
       try {
-        write(out, m);
-      } catch (IOException e) {
-        out = null;
+        client.close();
+      } catch (IOException ignored) {
+        // already closed
       }
     }
   }

@@ -11,13 +11,25 @@ public final class MethodRegistry {
   private static final ConcurrentHashMap<Integer, String> ID_TO_NAME = new ConcurrentHashMap<>();
 
   public static int register(String name) {
-    return NAME_TO_ID.computeIfAbsent(
-        name,
-        k -> {
-          int id = NEXT_ID.getAndIncrement();
-          ID_TO_NAME.put(id, k);
-          return id;
-        });
+    Integer existing = NAME_TO_ID.get(name);
+    if (existing != null) {
+      return existing;
+    }
+    if (NEXT_ID.get() >= CallCounter.MAX_METHODS) {
+      return CallCounter.MAX_METHODS;
+    }
+    Integer assigned =
+        NAME_TO_ID.computeIfAbsent(
+            name,
+            k -> {
+              int id = NEXT_ID.getAndIncrement();
+              if (id >= CallCounter.MAX_METHODS) {
+                return null;
+              }
+              ID_TO_NAME.put(id, k);
+              return id;
+            });
+    return assigned != null ? assigned : CallCounter.MAX_METHODS;
   }
 
   public static String name(int id) {
