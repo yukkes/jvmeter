@@ -82,6 +82,7 @@
 | `jvmeter-<version>-windows-x64.zip` | `jvmeter\jvmeter.exe` |
 | `jvmeter-<version>-macos-arm64.zip` | `jvmeter.app` |
 | `jvmeter-<version>-linux-x64.tar.gz` | `jvmeter/bin/jvmeter` |
+| `jvmeter-gui.jar` | `java -jar jvmeter-gui.jar`（Java 17 以上がある任意の OS・アーキテクチャ） |
 
 アプリには署名がありません。macOS では初回にブロックされたら **システム設定 › プライバシーとセキュリティ** で jvmeter を許可し、Windows では **詳細情報 › 実行** を選んでください。
 
@@ -100,7 +101,7 @@
 ### 2. 起動時からエージェントを適用して記録
 
 バッチ処理など、プロセスの起動直後から終了時までをプロファイルしたい場合は、JVM 起動オプションにエージェントを指定します。
-エージェントの JAR とデモアプリはリリースに含まれないため、[ソースからビルド](#ソースコードからのビルド)してください。
+エージェントの JAR（`jvmeter-agent.jar`）は [Releases](https://github.com/yukkes/jvmeter/releases) からダウンロードできます（デモアプリは[ソースからビルド](#ソースコードからのビルド)してください）。
 
 ```bash
 java -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
@@ -185,7 +186,7 @@ GUI 上では、目的別に以下のビューが提供されています。
 
 ### エージェント JAR による CLI 操作
 
-[ソースからビルド](#ソースコードからのビルド)したエージェントの JAR を使えば、GUI を使用せずにコマンドラインからプロセスの確認やアタッチを行うことも可能です。
+[Releases](https://github.com/yukkes/jvmeter/releases) または[ソースからビルド](#ソースコードからのビルド)したエージェントの JAR を使えば、GUI を使用せずにコマンドラインからプロセスの確認やアタッチを行うことも可能です。
 
 ```bash
 # 実行ユーザー権限で動作している JVM 一覧を表示（jps -v 相当）
