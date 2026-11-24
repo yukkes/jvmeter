@@ -147,8 +147,7 @@ final class Server {
       // the agent noticing (a GUI that crashed, an ssh tunnel that dropped)
       synchronized (this) {
         if (queue != null) {
-          queue.clear();
-          queue.offer(DONE);
+          finish(queue);
         }
         if (client != null) {
           client.close();
@@ -156,28 +155,7 @@ final class Server {
         client = s;
         queue = q;
       }
-      Thread sender =
-          new Thread(
-              () -> {
-                try {
-                  while (true) {
-                    Live.Message m = q.take();
-                    if (m == DONE) {
-                      return;
-                    }
-                    write(w, m);
-                  }
-                } catch (IOException | InterruptedException e) {
-                  try {
-                    s.close();
-                  } catch (IOException ignored) {
-                    // already closed
-                  }
-                }
-              },
-              "jvmeter-send");
-      sender.setDaemon(true);
-      sender.start();
+      Thread sender = startSender(s, w, q);
       s.setSoTimeout(0);
       try {
         send(Agent.hello());
@@ -203,8 +181,7 @@ final class Server {
             queue = null;
           }
         }
-        q.clear();
-        q.offer(DONE);
+        finish(q);
         sender.interrupt();
         if (current) {
           Agent.disconnected();
@@ -213,6 +190,43 @@ final class Server {
     } catch (IOException e) {
       // the client went away
     }
+  }
+
+  /** a daemon thread that writes what the client is sent, until {@link #DONE} or an error */
+  private static Thread startSender(
+      Socket s, Writer w, java.util.concurrent.BlockingQueue<Live.Message> q) {
+    Thread sender =
+        new Thread(
+            () -> {
+              try {
+                while (true) {
+                  Live.Message m = q.take();
+                  if (m == DONE) {
+                    return;
+                  }
+                  write(w, m);
+                }
+              } catch (IOException | InterruptedException e) {
+                try {
+                  s.close();
+                } catch (IOException ignored) {
+                  // already closed
+                }
+              }
+            },
+            "jvmeter-send");
+    sender.setDaemon(true);
+    sender.start();
+    return sender;
+  }
+
+  /**
+   * drops what is still queued and puts {@link #DONE} in, even if another thread fills the queue
+   */
+  private static void finish(java.util.concurrent.BlockingQueue<Live.Message> q) {
+    do {
+      q.clear();
+    } while (!q.offer(DONE));
   }
 
   /**
@@ -235,7 +249,7 @@ final class Server {
     int c;
     while ((c = in.read()) != -1) {
       if (c == '\n') {
-        if (b.length() > 0 && b.charAt(b.length() - 1) == '\r') {
+        if (!b.isEmpty() && b.charAt(b.length() - 1) == '\r') {
           b.setLength(b.length() - 1);
         }
         return b.toString();
@@ -245,7 +259,7 @@ final class Server {
       }
       b.append((char) c);
     }
-    return b.length() == 0 ? null : b.toString();
+    return b.isEmpty() ? null : b.toString();
   }
 
   static Live.Message error(String message) {

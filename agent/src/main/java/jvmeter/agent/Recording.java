@@ -219,7 +219,9 @@ final class Recording {
   void stop() {
     timer.shutdownNow();
     try {
-      timer.awaitTermination(2, TimeUnit.SECONDS);
+      if (!timer.awaitTermination(2, TimeUnit.SECONDS)) {
+        System.err.println("[jvmeter] the sampling timer did not stop within 2 s");
+      }
     } catch (InterruptedException ignored) {
       Thread.currentThread().interrupt();
     }
