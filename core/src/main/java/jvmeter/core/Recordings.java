@@ -2,7 +2,6 @@ package jvmeter.core;
 
 import io.avaje.json.JsonReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -208,8 +207,8 @@ public final class Recordings {
    * right after about and summary; null when it is not a snapshot
    */
   static Entry head(Path f) {
-    try (InputStream in = Snapshot.open(f);
-        JsonReader r = Snapshot.JSONB.reader(in)) {
+    // bytes, not a stream (see Snapshot.read)
+    try (JsonReader r = Snapshot.JSONB.reader(Files.readAllBytes(f))) {
       Snapshot.Target t = null;
       String startedAt = null;
       Double sec = null;

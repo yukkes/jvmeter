@@ -1,9 +1,7 @@
 package jvmeter.core;
 
-import io.avaje.json.JsonIoException;
 import io.avaje.jsonb.Json;
 import io.avaje.jsonb.Jsonb;
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -244,22 +242,9 @@ public final class Snapshot {
 
   /** Reads a snapshot file (.json). */
   public static Snapshot read(Path file) throws IOException {
-    // streamed into the parser: no copy of the whole JSON as bytes and again as a String
-    try (InputStream json = open(file)) {
-      try {
-        return checked(() -> JSONB.type(Snapshot.class).fromJson(json));
-      } catch (IllegalArgumentException e) {
-        if (e.getCause() instanceof JsonIoException io && io.getCause() instanceof IOException c) {
-          throw c; // a file that cannot be read stays an IOException
-        }
-        throw e;
-      }
-    }
-  }
-
-  /** the JSON of a snapshot file */
-  static InputStream open(Path file) throws IOException {
-    return new BufferedInputStream(Files.newInputStream(file), 1 << 16);
+    // bytes, not a stream: avaje-jsonb 3.16 misreads some files it parses from an InputStream
+    byte[] json = Files.readAllBytes(file);
+    return checked(() -> JSONB.type(Snapshot.class).fromJson(json));
   }
 
   static final Jsonb JSONB = Jsonb.builder().build();

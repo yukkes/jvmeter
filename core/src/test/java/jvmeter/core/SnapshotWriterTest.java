@@ -64,6 +64,27 @@ class SnapshotWriterTest {
     assertEquals(s.gc.events.size(), new Session(Snapshot.read(f)).gc.events.size());
   }
 
+  /**
+   * a recording whose class names fall at every offset reads back: avaje-jsonb 3.16 misreads some
+   * of them when it parses from a stream (a GUI recording that could not be opened again)
+   */
+  @Test
+  void readsBackAtEveryOffset(@TempDir Path dir) throws IOException {
+    Session s = new Session(Snapshot.loadSample());
+    java.util.Map<String, Long> count = new java.util.HashMap<>();
+    for (int i = 0; i < 400; i++) {
+      count.put("java.time.format.DateTimeFormatterBuilder$Printer" + i + "[]", (long) i);
+    }
+    s.chist.add(new Session.ClassSnap(s.chist.get(s.chist.size() - 1).t() + 1, count, count));
+    Path f = dir.resolve("s.json");
+    for (int pad = 0; pad < 4096; pad += 5) {
+      s.snap.target.name = "x".repeat(pad);
+      SnapshotWriter.write(s, f);
+      assertEquals(pad, Snapshot.read(f).target.name.length(), "offset " + pad);
+      assertEquals(pad, Recordings.head(f).target().name.length(), "offset " + pad);
+    }
+  }
+
   @Test
   void readsPlainJsonAndRejectsBrokenFiles(@TempDir Path dir) throws IOException {
     Session s = new Session(Snapshot.loadSample());
